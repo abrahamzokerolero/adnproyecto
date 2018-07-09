@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title')
-    ADN México | Crear categoria
+    ADN México | Editar categoria
 @endsection
 
 @section('script')
@@ -11,6 +11,15 @@
 
 @section('content')
 <div class="container">
+	
+	<div class="card-title p-3 mb-3 card-header">
+		<img src="{{asset('images/etiquetas.png')}}" alt="" width="80" height="70" class=""><span class="h4 ml-3 font-weight-bold"> EDITAR CATEGORIA</span>
+		<div class="float-right">
+			@can('categorias.index')
+			<a href="{{route('categorias.index')}}" class="btn btn-secondary mt-2 ml-3"><i class="fa fa-chevron-left mr-2"></i>Volver a categorias</a>
+			@endcan
+		</div>
+	</div>
 
 	<!-- Codigo de muestra de errores traidos desde las condiciones del Request de categorias -->
 	@if(count($errors) > 0)
@@ -25,13 +34,14 @@
 
 	<!-- Formulario de ingreso de una nueva categoria-->
 
-	<div class="container w-50">
-		<p class="card-header">Actualizacion de datos</p>
+	<div class="container w-75">
+		<p class="card-header bg-secondary text-white">Actualizacion de datos</p>
 	
 		{!! Form::open(array('route' => ['categorias.update',$categoria->id], 'method' => 'PUT')) !!}﻿
 
 		<div class="p-3">
 				<div class="form-group">
+				<p class="text-info ">Nota: El nombre debe ser diferente al actual</p>
 					{!! Form::label('nombre' , 'Nombre')!!}
 					{!! Form::text('nombre' , null , [ 'class' => 'form-control', 'placeholder'=> 'Nombre actual: ' .$categoria->nombre , 'required'])!!}
 				</div>

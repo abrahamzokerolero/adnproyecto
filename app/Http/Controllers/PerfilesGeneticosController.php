@@ -1,0 +1,727 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\PerfilGenetico;
+use App\Marcador;
+use App\Metadato;
+use App\Fuente;
+use App\Alelo;
+use App\User;
+use App\Categoria;
+use App\TipoDeMetadato;
+use App\EtiquetaAsignada;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
+class PerfilesGeneticosController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index()
+    {
+        $usuario = User::find(Auth::id());
+
+        if($usuario->estado->nombre == "CNB"){
+            $perfiles_geneticos = PerfilGenetico::where('requiere_revision', '=', 0)->where('es_perfil_repetido', '=', 0)->where('desestimado', '=', 0)->get();
+        }
+        else{
+            $perfiles_geneticos = PerfilGenetico::where('id_estado', '=', $usuario->id_estado)->where('requiere_revision', '=', 0)->where('es_perfil_repetido', '=', 0)->where('desestimado', '=', 0)->get();   
+        }        
+        return view('perfiles_geneticos.index', [
+            'perfiles_geneticos' =>$perfiles_geneticos,
+            'usuario' => $usuario,
+        ]);
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {   
+        $marcadores = Marcador::get();
+        return view('perfiles_geneticos.create',[
+            'marcadores' => $marcadores,
+        ]);    
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {   
+        $usuario = User::find(Auth::id());
+        $consecutivo = PerfilGenetico::where('id_estado', '=', $usuario->estado->id)->count()+1;
+        $perfil_genetico = PerfilGenetico::create([
+            'identificador' => 'G-' . $usuario->id_estado . '-' . $consecutivo,
+            'id_externo' => $request->clave_de_muestra,
+            'id_usuario' => Auth::id(),
+            'id_fuente' => $request->id_fuente,
+            'id_estado' => $usuario->id_estado,
+        ]);
+
+        $contador = 0;
+        $homocigotos = 0;
+        $marcador_anterior = '';
+
+        foreach ($request->all() as $key => $value) {
+            if($value<>null){
+                if(is_array($value)){
+                    foreach ($value as $key => $value) {
+                        $etiqueta = EtiquetaAsignada::create([
+                            'id_etiqueta' => $value,
+                            'id_perfil_genetico' => $perfil_genetico->id,
+
+                        ]);
+                    }
+                }
+                else{
+                    if($key <> '_token'){ // descartamos el token de la consulta
+                        if($key <> 'id_fuente'){    // descartamos la fuente
+                          if($key <> 'clave_de_muestra'){
+                            $primera_palabra = explode('_', $key);    // dividimos el $key en palabras separadas
+                            $verifica_marcador = Marcador::where('nombre', '=', $primera_palabra[0])->first(); // buscamos si la palabra existe en marcadores
+
+                            if(empty($verifica_marcador)){  // si la busqueda devuelve un arreglo vacio, es un metadato
+                                $id_tipo_de_metadato = TipoDeMetadato::where('nombre','=', $key)->first();
+                                if(empty($id_tipo_de_metadato)){    // si no existe el tipo de metadato lo creamos y guardamos
+                                    $tipo_de_metadato = TipoDeMetadato::create([
+                                        'nombre' => $key
+                                    ]);
+
+                                    $metadato = Metadato::create([
+                                        'id_perfil_genetico' => $perfil_genetico->id,
+                                        'id_tipo_de_metadato' => $tipo_de_metadato->id,
+                                        'dato' => $value
+                                    ]);                                    
+                                }   
+                                else{                               // si existe solo creamos el metadato asociado al perfil
+                                    $metadato = Metadato::create([
+                                        'id_perfil_genetico' => $perfil_genetico->id,
+                                        'id_tipo_de_metadato' => $id_tipo_de_metadato->id,
+                                        'dato' => $value
+                                    ]);   
+                                }
+                            }
+                            else{
+                              if($verifica_marcador->nombre == $marcador_anterior){  // update del marcador en alelos
+
+                                $alelo = Alelo::where('id_perfil_genetico', '=', $perfil_genetico->id)->where('id_marcador', '=', $verifica_marcador->id)->first();
+
+                                $alelo->alelo_2 = $value;
+                                $alelo->save();
+
+                                if($alelo->alelo_1 == $alelo->alelo_2){
+                                    $homocigotos++;
+                                }
+
+                                $marcador_anterior = $verifica_marcador;
+                              }
+                              else{ // create del marcador en alelos
+
+                                $alelo = Alelo::create([
+                                    'id_perfil_genetico' => $perfil_genetico->id,
+                                    'id_marcador' => $verifica_marcador->id,
+                                    'alelo_1' => $value,
+                                ]);
+                                $marcador_anterior = $verifica_marcador->nombre;
+                                $contador ++;
+                              }     
+                            }
+                          }
+                        }
+                    }
+                }
+            }
+        }
+
+        foreach($perfil_genetico->alelos as $alelo){
+          
+          if($alelo->alelo_2 == null &&  $alelo->marcador->id_tipo_de_marcador == 1 || $alelo->alelo_2 == null &&  $alelo->marcador->nombre == 'dys385' ){
+            $alelo->alelo_2 = $alelo->alelo_1;
+            $alelo->save();
+            $homocigotos++;
+          }
+        }
+
+        if($homocigotos > 5){
+            $perfil_genetico->requiere_revision = true;
+            flash('El perfil ingresado presento mas de 5 homocigotos','warning');
+        }
+
+        if($contador < 12){
+            $perfil_genetico->requiere_revision = true;
+            flash('El perfil ingresado presento menos de 12 marcadores','warning');
+        }
+
+        $perfil_genetico->numero_de_homocigotos = $homocigotos;
+        $perfil_genetico->numero_de_marcadores = $contador;
+        $perfil_genetico->save();
+
+        $verifica_perfil_repetido = false;
+
+        $datos_perfil = array();
+
+        foreach ($perfil_genetico->alelos as $perfil) {
+          array_push( $datos_perfil, $perfil->id_marcador, $perfil->alelo_1, $perfil->alelo_2); 
+        }
+
+        $genotipos = PerfilGenetico::where('desestimado', '=' , 0)->orWhere('es_perfil_repetido', '=' , 0)->get();
+
+        foreach($genotipos as $genotipo){
+          $datos_perfil_a_comparar = array();  
+          foreach ($genotipo->alelos as $perfil_acomparar) {
+            array_push($datos_perfil_a_comparar, $perfil_acomparar->id_marcador,$perfil_acomparar->alelo_1, $perfil_acomparar->alelo_2);
+          }
+          
+          if( implode($datos_perfil) == implode($datos_perfil_a_comparar)){
+            if($genotipo->id <> $perfil_genetico->id){
+              $perfil_genetico->es_perfil_repetido = 1;
+              $perfil_genetico->id_perfil_original = $genotipo->id;
+              $perfil_genetico->id_estado_perfil_original = $genotipo->id_estado;
+              $perfil_genetico->save();
+              $usuario = User::find(Auth()->id());  
+              if($usuario->estado->nombre == 'CNB'){
+                  flash("El perfil genetico fue agregado sin embargo existe otro con los mismos marcadores y mismos valores en sus alelos. El perfil fue enviado al apartado de perfiles duplicados: <a href=". route('perfiles_geneticos.validar_duplicado', $perfil_genetico->id) ."> <b>" . $perfil_genetico->identificador . '</b></a>'  , 'danger');
+              }
+              else{
+                if($perfil_genetico->id_estado == $perfil_genetico->id_estado_perfil_original){
+                  flash("El perfil genetico fue agregado sin embargo existe otro con los mismos marcadores y mismos valores en sus alelos. El perfil fue enviado al apartado de perfiles duplicados: <a href=". route('perfiles_geneticos.validar_duplicado', $perfil_genetico->id) ."> <b>" . $perfil_genetico->identificador . '</b></a>'  , 'danger');
+                }
+                else{
+                  flash("El perfil genetico fue agregado sin embargo existe otro perfil en otro estado con los mismos marcadores y mismos valores en sus alelos. CNB se encargara de validar la informacion de ambos perfiles, de ser necesario se comunicara con ustedes para validar la informacion. No ingrese nuevamente el perfil genetico ya fue registrado en la base de datos de CNB"  , 'danger');
+                }
+              }
+            }
+            else{
+              flash('Operacion completada', 'success');
+            }
+          }
+        }
+        return redirect()->route('perfiles_geneticos.index');
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show($id)
+    {
+        $perfil_genetico = PerfilGenetico::find($id);
+        return view('perfiles_geneticos.show', [
+            'perfil_genetico' => $perfil_genetico,
+        ]);
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit($id)
+    {   
+        $fuentes = Fuente::get();
+        $categorias = Categoria::with('etiquetas')->orderBy('nombre', 'ASC')->get();
+        $marcadores = Marcador::get();
+        $perfil_genetico = PerfilGenetico::find($id);
+        // metadatos
+        $fecha_de_hallazgo= null;
+        $lugar= null;
+        $paraje= null;
+        $fosa= null;
+        $nombre_del_donante= null;
+        $nombre_del_desaparecido= null;
+        $curp_del_desaparecido = null;
+        $parentesco_con_el_desaparecido= null;
+        $curp_del_familiar = null;
+        $clave_de_muestra = $perfil_genetico->id_externo;
+        $descripcion_de_la_muestra= null;
+        $observaciones= null;
+        $talla= null;
+        $peso= null;
+        $s_particulares_o_malformaciones= null;
+        $tatuaje= null;
+        $sexo= null;
+        $ci_nuc_ap= null;
+        $fecha_desaparicion= null;
+        $lugar_de_desaparicion= null;
+        $no_de_caso_relacionado= null;
+        $curp = null;
+
+        
+
+        foreach($perfil_genetico->metadatos as $metadato){
+          
+          if($metadato->tipo_de_metadato->nombre == 'fecha_de_hallazgo'){$fecha_de_hallazgo = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'lugar'){$lugar = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'paraje'){$paraje = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'fosa'){$fosa = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'nombre_del_donante'){$nombre_del_donante = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'nombre_del_desaparecido'){$nombre_del_desaparecido = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'curp_del_desaparecido'){$curp_del_desaparecido = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'parentesco_con_el_desaparecido'){$parentesco_con_el_desaparecido = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'curp_del_familiar'){$curp_del_familiar = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'descripcion_de_la_muestra'){$descripcion_de_la_muestra = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'observaciones'){$observaciones = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'talla'){$talla = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'peso'){$peso = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 's_particulares_o_malformaciones'){$s_particulares_o_malformaciones = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'tatuaje'){$tatuaje = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'sexo'){$sexo = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'ci_nuc_ap'){$ci_nuc_ap = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'fecha_desaparicion'){$fecha_desaparicion = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'lugar_de_desaparicion'){$lugar_de_desaparicion = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'no_de_caso_relacionado'){$no_de_caso_relacionado = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'curp'){$curp = $metadato->dato;}
+        }
+
+        return view('perfiles_geneticos.edit', [
+            'perfil_genetico' => $perfil_genetico,
+            'marcadores' => $marcadores,
+            'fuentes' => $fuentes,
+            'categorias' => $categorias,
+            //metadatos
+            'fecha_de_hallazgo' => $fecha_de_hallazgo,
+            'lugar' => $lugar,
+            'paraje' => $paraje,
+            'fosa'  => $fosa,
+            'nombre_del_donante' => $nombre_del_donante,
+            'nombre_del_desaparecido' => $nombre_del_desaparecido,
+            'curp_del_desaparecido' => $curp_del_desaparecido,
+            'parentesco_con_el_desaparecido' => $parentesco_con_el_desaparecido,
+            'curp_del_familiar' => $curp_del_familiar,
+            'clave_de_muestra' => $clave_de_muestra,
+            'descripcion_de_la_muestra' => $descripcion_de_la_muestra,
+            'observaciones' => $observaciones,
+            'talla' => $talla,
+            'peso' => $peso,
+            's_particulares_o_malformaciones' => $s_particulares_o_malformaciones,
+            'tatuaje' => $tatuaje,
+            'sexo' => $sexo,
+            'ci_nuc_ap' => $ci_nuc_ap,
+            'fecha_desaparicion' => $fecha_desaparicion,
+            'lugar_de_desaparicion' => $lugar_de_desaparicion,
+            'no_de_caso_relacionado' => $no_de_caso_relacionado,
+            'curp' => $curp,
+        ]);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, $id)
+    {
+        $perfil_genetico = PerfilGenetico::find($id);
+
+        $perfil_genetico->id_fuente = $request->id_fuente;
+        $perfil_genetico->id_externo = $request->clave_de_muestra;
+        foreach ($perfil_genetico->etiquetas as $etiqueta){
+            $etiqueta->delete();
+        }
+        foreach ($perfil_genetico->alelos as $alelo) {
+            $alelo->delete();          
+        }
+        foreach ($perfil_genetico->metadatos as $metadato) {
+            $metadato->delete();          
+        }
+
+        $contador = 0;
+        $homocigotos = 0;
+        $marcador_anterior = '';
+
+        foreach ($request->all() as $key => $value) {
+            if($value<>null){
+                if(is_array($value)){
+                    foreach ($value as $key => $value) {
+                        $etiqueta = EtiquetaAsignada::create([
+                            'id_etiqueta' => $value,
+                            'id_perfil_genetico' => $perfil_genetico->id,
+                        ]);
+                    }
+                }
+                else{
+                    if($key <> '_token'){ // descartamos el token de la consulta
+                        if($key <> 'id_fuente'){    // descartamos la fuente
+                          if($key <> 'clave_de_muestra'){
+                            if($key <> '_method'){
+                              $primera_palabra = explode('_', $key);    // dividimos el $key en palabras separadas
+                              $verifica_marcador = Marcador::where('nombre', '=', $primera_palabra[0])->first(); // buscamos si la palabra existe en marcadores
+
+                              if(empty($verifica_marcador)){  // si la busqueda devuelve un arreglo vacio, es un metadato
+                                  $id_tipo_de_metadato = TipoDeMetadato::where('nombre','=', $key)->first();
+                                  if(empty($id_tipo_de_metadato)){    // si no existe el tipo de metadato lo creamos y guardamos
+                                      $tipo_de_metadato = TipoDeMetadato::create([
+                                          'nombre' => $key
+                                      ]);
+
+                                      $metadato = Metadato::create([
+                                          'id_perfil_genetico' => $perfil_genetico->id,
+                                          'id_tipo_de_metadato' => $tipo_de_metadato->id,
+                                          'dato' => $value
+                                      ]);                                    
+                                  }   
+                                  else{                               // si existe solo creamos el metadato asociado al perfil
+                                      $metadato = Metadato::create([
+                                          'id_perfil_genetico' => $perfil_genetico->id,
+                                          'id_tipo_de_metadato' => $id_tipo_de_metadato->id,
+                                          'dato' => $value
+                                      ]);   
+                                  }
+                              }
+                              else{
+                                if($verifica_marcador->nombre == $marcador_anterior){  // update del marcador en alelos
+
+                                  $alelo = Alelo::where('id_perfil_genetico', '=', $perfil_genetico->id)->where('id_marcador', '=', $verifica_marcador->id)->first();
+
+                                  $alelo->alelo_2 = $value;
+                                  $alelo->save();
+
+                                  if($alelo->alelo_1 == $alelo->alelo_2){
+                                      $homocigotos++;
+                                  }
+
+                                  $marcador_anterior = $verifica_marcador;
+                                }
+                                else{ // create del marcador en alelos
+
+                                  $alelo = Alelo::create([
+                                      'id_perfil_genetico' => $perfil_genetico->id,
+                                      'id_marcador' => $verifica_marcador->id,
+                                      'alelo_1' => $value,
+                                  ]);
+                                  $marcador_anterior = $verifica_marcador->nombre;
+                                  $contador ++;
+                                }     
+                              }
+                            }
+                          }
+                        }
+                    }
+                }
+            }
+        }
+
+        $perfil_genetico = PerfilGenetico::find($id);
+
+        foreach($perfil_genetico->alelos as $alelo){
+          
+          if($alelo->alelo_2 == null &&  $alelo->marcador->id_tipo_de_marcador == 1 || $alelo->alelo_2 == null &&  $alelo->marcador->nombre == 'dys385' ){
+            $alelo->alelo_2 = $alelo->alelo_1;
+            $alelo->save();
+            $homocigotos++;
+          }
+        }
+
+
+
+        if($homocigotos > 5 || $contador < 12 ){
+            $perfil_genetico->requiere_revision = 1;
+            flash('El perfil ingresado presento mas de 5 homocigotos o menos de 12 marcadores','warning');
+        }
+        else{
+            $perfil_genetico->requiere_revision = 0;
+        }
+
+        $perfil_genetico->numero_de_homocigotos = $homocigotos;
+        $perfil_genetico->numero_de_marcadores = $contador;
+        $perfil_genetico->save();
+
+        $verifica_perfil_repetido = false;
+
+        $datos_perfil = array();
+
+        foreach ($perfil_genetico->alelos as $perfil) {
+          array_push( $datos_perfil, $perfil->id_marcador, $perfil->alelo_1, $perfil->alelo_2); 
+        }
+
+        $genotipos = PerfilGenetico::where('desestimado', '=', 0)->where('es_perfil_repetido', '=' , 0)->get();
+
+        foreach($genotipos as $genotipo){
+          $datos_perfil_a_comparar = array();  
+          foreach ($genotipo->alelos as $perfil_acomparar) {
+            array_push($datos_perfil_a_comparar, $perfil_acomparar->id_marcador,$perfil_acomparar->alelo_1, $perfil_acomparar->alelo_2);
+          }
+          
+          if( implode($datos_perfil) == implode($datos_perfil_a_comparar)){
+            if($genotipo->id <> $perfil_genetico->id){
+              $perfil_genetico->es_perfil_repetido = 1;
+              $perfil_genetico->id_perfil_original = $genotipo->id;
+              $perfil_genetico->id_estado_perfil_original = $genotipo->id_estado;
+              $perfil_genetico->save();
+              $usuario = User::find(Auth()->id());  
+              if($usuario->estado->nombre == 'CNB'){
+                  flash("El perfil genetico fue agregado sin embargo existe otro con los mismos marcadores y mismos valores en sus alelos. El perfil fue enviado al apartado de perfiles duplicados: <a href=". route('perfiles_geneticos.validar_duplicado', $perfil_genetico->id) ."> <b>" . $perfil_genetico->identificador . '</b></a>'  , 'danger');
+              }
+              else{
+                if($perfil_genetico->id_estado == $perfil_genetico->id_estado_perfil_original){
+                  flash("El perfil genetico fue agregado sin embargo existe otro con los mismos marcadores y mismos valores en sus alelos. El perfil fue enviado al apartado de perfiles duplicados: <a href=". route('perfiles_geneticos.validar_duplicado', $perfil_genetico->id) ."> <b>" . $perfil_genetico->identificador . '</b></a>'  , 'danger');
+                }
+                else{
+                  flash("El perfil genetico fue agregado sin embargo existe otro perfil en otro estado con los mismos marcadores y mismos valores en sus alelos. CNB se encargara de validar la informacion de ambos perfiles, de ser necesario se comunicara con ustedes para validar la informacion"  , 'danger');
+                }
+              }
+            }
+            else{
+              flash('Operacion completada', 'success');
+            }
+          }
+        }
+        return redirect()->route('perfiles_geneticos.index');
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy($id)
+    {
+        //
+    }
+
+    public function revision(){
+        $usuario = User::find(Auth::id());
+        if($usuario->estado->nombre == "CNB"){
+            $perfiles_geneticos = PerfilGenetico::where('requiere_revision','=',1)->where('es_perfil_repetido','=',0)->where('desestimado', '=', 0)->get();
+        }
+        else{
+            $perfiles_geneticos = PerfilGenetico::where('id_estado', '=', $usuario->id_estado)->where('requiere_revision','=',1)->where('es_perfil_repetido','=',0)->where('desestimado', '=', 0)->get();   
+        }  
+        return view('perfiles_geneticos.revision', [
+            'perfiles_geneticos' =>$perfiles_geneticos,
+        ]);
+    }
+
+    public function validar(Request $request, $id){
+      $perfil_genetico = PerfilGenetico::find($id);
+      $validacion = $request->validacion;
+      if($validacion == 'aprobar'){
+        $perfil_genetico->requiere_revision = 0;
+        $perfil_genetico->id_usuario_reviso = Auth::id();
+        flash('El perfil <b>' . $perfil_genetico->identificador . '</b> fue validado, ahora podra ser usado para las busquedas de las busquedas');
+      }
+      else{
+        $perfil_genetico->desestimado = 1;
+        $perfil_genetico->requiere_revision = 1;
+        $perfil_genetico->id_usuario_reviso = Auth::id(); 
+        flash('El perfil fue <b>' . $perfil_genetico->identificador . '</b> fue desestimado');
+      }
+      $perfil_genetico->save();
+      
+      return redirect()->route('perfiles_geneticos.revision');
+    }
+
+    public function comprobacion(Request $request){
+
+      $fuentes = Fuente::get();
+      $categorias = Categoria::with('etiquetas')->orderBy('nombre', 'ASC')->get();
+      $marcadores = Marcador::get();
+      return view('perfiles_geneticos.comprobacion', [
+          'marcadores' => $marcadores,
+          'requestAnterior' =>$request,
+          'fuentes' => $fuentes,
+          'categorias' => $categorias, 
+
+      ]);
+    }
+
+    public function duplicados(){
+        $usuario = User::find(Auth::id());
+        if($usuario->estado->nombre == "CNB"){
+            $perfiles_geneticos = PerfilGenetico::where('es_perfil_repetido','=',1)->where('desestimado', '=', 0)->get();
+        }
+        else{
+            $perfiles_geneticos = PerfilGenetico::where('id_estado', '=', $usuario->id_estado)->where('es_perfil_repetido','=',1)->where('id_estado_perfil_original','=',$usuario->id_estado)->where('desestimado', '=', 0)->get();   
+        }  
+        return view('perfiles_geneticos.duplicados', [
+            'perfiles_geneticos' =>$perfiles_geneticos,
+        ]);
+    }
+
+    public function desestimados(){
+        $usuario = User::find(Auth::id());
+        if($usuario->estado->nombre == "CNB"){
+            $perfiles_geneticos = PerfilGenetico::where('desestimado', '=', 1)->get();
+        }
+        else{
+            $perfiles_geneticos = PerfilGenetico::where('id_estado', '=', $usuario->id_estado)->where('desestimado', '=', 1)->get();   
+        }  
+        return view('perfiles_geneticos.desestimados', [
+            'perfiles_geneticos' =>$perfiles_geneticos,
+        ]);
+    }
+
+    public function validar_duplicado($id){
+        $fuentes = Fuente::get();
+        $categorias = Categoria::with('etiquetas')->orderBy('nombre', 'ASC')->get();
+        $marcadores = Marcador::get();
+        $perfil_genetico_repetido = PerfilGenetico::find($id);
+        $perfil_genetico = PerfilGenetico::find($perfil_genetico_repetido->id_perfil_original);
+        // metadatos
+        $fecha_de_hallazgo= null;
+        $lugar= null;
+        $paraje= null;
+        $fosa= null;
+        $nombre_del_donante= null;
+        $nombre_del_desaparecido = null;
+        $curp_del_desaparecido = null;
+        $parentesco_con_el_desaparecido= null;
+        $curp_del_familiar = null;
+        $clave_de_muestra = $perfil_genetico->id_externo;
+        $descripcion_de_la_muestra= null;
+        $observaciones= null;
+        $talla= null;
+        $peso= null;
+        $s_particulares_o_malformaciones= null;
+        $tatuaje= null;
+        $sexo= null;
+        $ci_nuc_ap= null;
+        $fecha_desaparicion= null;
+        $lugar_de_desaparicion= null;
+        $no_de_caso_relacionado= null;
+        $curp = null;
+
+        
+
+        foreach($perfil_genetico->metadatos as $metadato){
+          
+          if($metadato->tipo_de_metadato->nombre == 'fecha_de_hallazgo'){$fecha_de_hallazgo = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'lugar'){$lugar = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'paraje'){$paraje = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'fosa'){$fosa = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'nombre_del_donante'){$nombre_del_donante = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'nombre_del_desaparecido'){$nombre_del_desaparecido = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'curp_del_desaparecido'){$curp_del_desaparecido = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'parentesco_con_el_desaparecido'){$parentesco_con_el_desaparecido = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'curp_del_familiar'){$curp_del_familiar = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'descripcion_de_la_muestra'){$descripcion_de_la_muestra = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'observaciones'){$observaciones = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'talla'){$talla = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'peso'){$peso = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 's_particulares_o_malformaciones'){$s_particulares_o_malformaciones = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'tatuaje'){$tatuaje = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'sexo'){$sexo = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'ci_nuc_ap'){$ci_nuc_ap = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'fecha_desaparicion'){$fecha_desaparicion = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'lugar_de_desaparicion'){$lugar_de_desaparicion = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'no_de_caso_relacionado'){$no_de_caso_relacionado = $metadato->dato;}
+          if($metadato->tipo_de_metadato->nombre == 'curp'){$curp = $metadato->dato;}
+        }
+
+        return view('perfiles_geneticos.validar_duplicado', [
+            'perfil_genetico_repetido' => $perfil_genetico_repetido,
+            'perfil_genetico' => $perfil_genetico,
+            'marcadores' => $marcadores,
+            'fuentes' => $fuentes,
+            'categorias' => $categorias,
+            //metadatos
+            'fecha_de_hallazgo' => $fecha_de_hallazgo,
+            'lugar' => $lugar,
+            'paraje' => $paraje,
+            'fosa'  => $fosa,
+            'nombre_del_donante' => $nombre_del_donante,
+            'nombre_del_desaparecido' => $nombre_del_desaparecido,
+            'curp_del_desaparecido' => $curp_del_desaparecido,
+            'parentesco_con_el_desaparecido' => $parentesco_con_el_desaparecido,
+            'curp_del_familiar' => $curp_del_familiar,
+            'clave_de_muestra' => $clave_de_muestra,
+            'descripcion_de_la_muestra' => $descripcion_de_la_muestra,
+            'observaciones' => $observaciones,
+            'talla' => $talla,
+            'peso' => $peso,
+            's_particulares_o_malformaciones' => $s_particulares_o_malformaciones,
+            'tatuaje' => $tatuaje,
+            'sexo' => $sexo,
+            'ci_nuc_ap' => $ci_nuc_ap,
+            'fecha_desaparicion' => $fecha_desaparicion,
+            'lugar_de_desaparicion' => $lugar_de_desaparicion,
+            'no_de_caso_relacionado' => $no_de_caso_relacionado,
+            'curp' => $curp,
+        ]);
+    }
+
+    public function guardar_validacion_de_duplicado(Request $request, $id){
+      $usuario_reviso = User::find(Auth()->id());
+      $perfil_genetico_repetido = PerfilGenetico::find($id);
+      $perfil_genetico_original = PerfilGenetico::find($perfil_genetico_repetido->id_perfil_original);
+      $perfil_genetico_repetido->desestimado = 1;
+      $perfil_genetico_repetido->id_usuario_reviso = $usuario_reviso->id;
+      $perfil_genetico_repetido->save();
+      $perfil_genetico_original->id_externo = $request->clave_de_muestra;
+      $perfil_genetico_original->id_fuente = $request->id_fuente;
+      $perfil_genetico_original->save();
+
+      
+        foreach ($perfil_genetico_original->etiquetas as $etiqueta){
+            $etiqueta->delete();
+        }
+        foreach ($perfil_genetico_original->metadatos as $metadato) {
+            $metadato->delete();          
+        }
+
+        foreach ($request->all() as $key => $value) {
+            if($value<>null){
+                if(is_array($value)){
+                    foreach ($value as $key => $value) {
+                        $etiqueta = EtiquetaAsignada::create([
+                            'id_etiqueta' => $value,
+                            'id_perfil_genetico' => $perfil_genetico_original->id,
+                        ]);
+                    }
+                }
+                else{
+                    if($key <> '_token'){ // descartamos el token de la consulta
+                        if($key <> 'id_fuente'){    // descartamos la fuente
+                          if($key <> 'clave_de_muestra'){
+                            if($key <> '_method'){
+                              $primera_palabra = explode('_', $key);    // dividimos el $key en palabras separadas
+                              $verifica_marcador = Marcador::where('nombre', '=', $primera_palabra[0])->first(); // buscamos si la palabra existe en marcadores
+
+                              if(empty($verifica_marcador)){  // si la busqueda devuelve un arreglo vacio, es un metadato
+                                $id_tipo_de_metadato = TipoDeMetadato::where('nombre','=', $key)->first();
+                                if(empty($id_tipo_de_metadato)){    // si no existe el tipo de metadato lo creamos y guardamos
+                                    $tipo_de_metadato = TipoDeMetadato::create([
+                                        'nombre' => $key
+                                    ]);
+
+                                    $metadato = Metadato::create([
+                                        'id_perfil_genetico' => $perfil_genetico_original->id,
+                                        'id_tipo_de_metadato' => $tipo_de_metadato->id,
+                                        'dato' => $value
+                                    ]);                                    
+                                }   
+                                else{   // si existe solo creamos el metadato asociado al perfil
+                                    $metadato = Metadato::create([
+                                        'id_perfil_genetico' => $perfil_genetico_original->id,
+                                        'id_tipo_de_metadato' => $id_tipo_de_metadato->id,
+                                        'dato' => $value
+                                    ]);   
+                                }
+                              }
+                            }
+                          }
+                        }
+                    }
+                }
+            }
+        }
+        flash('El perfil duplicado fue desestimado  y el perfil original fue actualizado', 'success');
+        return redirect()->route('perfiles_geneticos.show', $perfil_genetico_original); 
+    }
+}

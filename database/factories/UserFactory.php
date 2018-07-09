@@ -62,3 +62,30 @@ $factory->define(App\Etiqueta::class, function (Faker $faker) {
         'categoria_id' => $faker->randomDigit,
     ];
 });
+
+$factory->define(App\ImportacionFrecuencia::class, function (Faker $faker) {
+    // $date = Carbon::now();
+    // $date = $date->format('M j Y h:i:s');
+
+    return [
+        'created_at' => $faker->dateTimeThisDecade(),
+        'updated_at' => $faker->dateTimeThisDecade(),
+        'nombre' => $faker->domainName,
+        'id_usuario' => $faker->randomDigit,
+    ];
+});
+
+$factory->define(App\Frecuencia::class, function (Faker $faker) {
+    // $date = Carbon::now();
+    // $date = $date->format('M j Y h:i:s');
+
+    return [
+        'created_at' => $faker->dateTimeThisDecade(),
+        'updated_at' => $faker->dateTimeThisDecade(),
+        'id_importacion' => $faker->randomDigit,
+        'marcador' => $faker->word,
+        'alelo' => $faker->randomDigit,
+        'frecuencia' => $faker->randomFloat($nbMaxDecimals = 4, $min = 0, $max = 1),
+    ];
+});
+

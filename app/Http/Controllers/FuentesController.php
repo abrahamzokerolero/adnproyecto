@@ -6,7 +6,6 @@ use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Laracast\Flash\Flash;
 use App\Fuente;
-use App\Http\Requests\FuenteRequest;
 
 class FuentesController extends Controller
 {
@@ -39,12 +38,26 @@ class FuentesController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(FuenteRequest $request)
-    {
+    public function store(Request $request)
+    {   
+        $this->validate($request, [
+            'nombre' => 'min:3|max:90|required|unique:fuentes',
+            'id_interno' => 'min:1|max:20|required|unique:fuentes'
+        ],[
+            'nombre.min' => 'El tamaño minimo del nombre de la fuente es de 3 caracteres',
+            'nombre.max' => 'El tamaño maximo del nombre de la fuente deber de ser de 90 caracteres',
+            'nombre.required' => 'El campo nombre debe ser llenado',
+            'nombre.unique' => 'El nombre de fuente ya existe',
+            'id_interno.min' => 'El tamaño minimo del id idinterno de la fuente es de 3 caracteres',
+            'id_interno.max' => 'El tamaño maximo del id interno de la fuente deber de ser de 20 caracteres',
+            'id_interno.required' => 'El campo id interno debe ser llenado',
+            'id_interno.unique' => 'El id interno de fuente ya existe'
+        ]);
+
         $categoria = Fuente::create([
             'nombre' => $request->input('nombre'),
-            'id_externo' => $request->input('id_externo'),
             'id_interno' => $request->input('id_interno'),
+            'id_externo' => $request->input('id_externo'),
             'contacto_fuente' => $request->input('contacto_fuente'),
             'correo_fuente' => $request->input('correo_fuente'),
             'telefono1_fuente' => $request->input('telefono1_fuente'),
@@ -75,7 +88,7 @@ class FuentesController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function edit($id)
-    {
+    {   
         $fuente = Fuente::find($id);
 
         return view('fuentes.edit',[
@@ -92,6 +105,18 @@ class FuentesController extends Controller
      */
     public function update(Request $request, $id)
     {
+        $this->validate($request, [
+            'nombre' => "min:3|max:90|required|unique:fuentes,nombre,$id",
+            'id_interno' => "min:1|max:20|required|unique:fuentes,id_interno,$id"
+        ],[
+            'nombre.min' => 'El tamaño minimo del nombre de la fuente es de 3 caracteres',
+            'nombre.max' => 'El tamaño maximo del nombre de la fuente deber de ser de 90 caracteres',
+            'nombre.required' => 'El campo nombre debe ser llenado',
+            'id_interno.min' => 'El tamaño minimo del id idinterno de la fuente es de 3 caracteres',
+            'id_interno.max' => 'El tamaño maximo del id interno de la fuente deber de ser de 20 caracteres',
+            'id_interno.required' => 'El campo id interno debe ser llenado',
+        ]);
+        
         $fuente = Fuente::find($id);
         $fuente->nombre = $request->nombre;
         $fuente->id_interno = $request->id_interno;

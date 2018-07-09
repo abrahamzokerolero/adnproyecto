@@ -7,36 +7,25 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Categoria;
 use App\Etiqueta;
-use App\Http\Requests\EtiquetaRequest;
 use Laracast\Flash\Flash;
 
 
 class EtiquetasController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
     public function index()
-    {
-       /** Elemento colleccion de todas las etiquetas */
-        $etiquetas = Etiqueta::orderBy('id','desc')->get();
+    {   
 
-        return view('etiquetas.index', [
+        $categoria_sin_asignar = Categoria::where('nombre', '=', 'SIN ASIGNAR')->first();
+
+        if($categoria_sin_asignar == null){
+            $etiquetas = Etiqueta::where('categoria_id','=',null)->get();            
+        }
+        else{
+            $etiquetas = Etiqueta::where('categoria_id','=',null)->orWhere('categoria_id','=', $categoria_sin_asignar->id)->get();  
+        }
+        return view('etiquetas.index',[
             'etiquetas' => $etiquetas,
-        ]);   
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        $categorias = DB::table('categorias')->get();
-        return view('etiquetas.create')->with('categorias', $categorias);
+        ]);
     }
 
     /**
@@ -48,19 +37,56 @@ class EtiquetasController extends Controller
     public function store(Request $request)
     {
 
-        if($request->categoria_id == ''){
-            $categoria_sin_asignar = DB::table('categorias')->where('nombre', '=', 'SIN ASIGNAR')->get();
-        }
-
-        $categoria = Etiqueta::create([
-            'nombre' => $request->input('nombre'),
-            'categoria_id' => $request->categoria_id,
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
+        $this->validate($request, [
+            'nombre' => 'min:3|max:90|required|unique:etiquetas'
+        ],[
+            'nombre.min' => 'El tamaño minimo del nombre de la etiqueta es de 3 caracteres',
+            'nombre.max' => 'El tamaño maximo del nombre de la etiqueta deber de ser de 90 caracteres',
+            'nombre.required' => 'El campo debe ser llenado',
+            'nombre.unique' => 'El nombre de etiqueta ya existe'
         ]);
 
-        flash('La categoria se ingreso correctamente', 'success');
-        return redirect('etiquetas');
+
+        // Validacion de categoria antes de Guardar
+        if($request->categoria_id == ''){
+            flash('La etiqueta debe ser asignada a una categoria', 'danger');
+            return redirect('categorias');            
+        }
+        else{
+
+            /* Se obtiene la cadena de etiquetas*/            
+            $etiquetas = $request->nombre;
+
+            /* Elimina los espacios en blanco de la cadena            
+            $etiquetas = str_replace(' ', '', $etiquetas);*/
+
+
+            /* Separa las etiquetas entre comas*/            
+            $etiquetas = explode(',', $etiquetas);
+
+            /* Si se registran mas de 2 etiquetas*/
+            if( count($etiquetas) > 1){
+                for ($i = 0; $i < count($etiquetas); $i++) {
+                    $etiqueta = Etiqueta::create([
+                        /* la funcion trim elimina los espacios en blanco al principio y al final de la cadena*/
+                        'nombre' => trim($etiquetas[$i]),
+                        'categoria_id' => $request->categoria_id,
+                        'created_at' => Carbon::now(),
+                        'updated_at' => Carbon::now(),
+                    ]);
+                }
+            }
+            else {
+                $etiqueta = Etiqueta::create([
+                    'nombre' => $request->input('nombre'),
+                    'categoria_id' => $request->categoria_id,
+                    'created_at' => Carbon::now(),
+                    'updated_at' => Carbon::now(),
+                ]);  
+            }
+            flash('Se realizaron exitosamente los cambios', 'success');
+            return redirect('categorias'); 
+        }
     }
 
     /**
@@ -98,18 +124,31 @@ class EtiquetasController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(EtiquetaRequest $request, $id)
-    {
+    public function update(Request $request, $id)
+    {   
+        $this->validate($request, [
+            'nombre' => "min:3|max:90|required|unique:etiquetas,nombre,$id",
+        ],[
+            'nombre.min' => 'El tamaño minimo del nombre de la etiqueta es de 3 caracteres',
+            'nombre.max' => 'El tamaño maximo del nombre de la etiqueta deber de ser de 90 caracteres',
+            'nombre.required' => 'El campo debe ser llenado',
+            'nombre.unique' => 'El nombre de etiqueta ya existe'
+        ]);
+
         $etiqueta = Etiqueta::find($id);
-        $etiqueta->nombre = $request->nombre;
-        $etiqueta->categoria_id = $request->categoria_id;
-        $etiqueta->updated_at = Carbon::now();
-        $etiqueta->save();
-        
-        Flash('La etiqueta se actualizo correctamente', 'success');
 
-        return redirect()->route('etiquetas.index');
-
+        if($request->categoria_id == ''){
+            flash('La etiqueta debe ser asignada a una categoria', 'danger');
+            return redirect('etiquetas/'. $etiqueta->id . '/edit');            
+        }
+        else{
+            $etiqueta->nombre = $request->nombre;
+            $etiqueta->categoria_id = $request->categoria_id;
+            $etiqueta->updated_at = Carbon::now();
+            $etiqueta->save();
+            Flash('La etiqueta se actualizo correctamente', 'success');
+            return redirect('categorias/'. $request->categoria_id);
+        }
     }
 
     /**
@@ -125,6 +164,11 @@ class EtiquetasController extends Controller
 
         Flash('La etiqueta ' .$etiqueta->nombre . ' fue eliminada exitosamente', 'success');
 
-        return redirect()->route('etiquetas.index');
+        if($etiqueta->categoria_id <> null){
+            return redirect('categorias/'. $etiqueta->categoria_id);
+        }
+        else{
+            return redirect()->route('etiquetas.index');
+        }      
     }
 }

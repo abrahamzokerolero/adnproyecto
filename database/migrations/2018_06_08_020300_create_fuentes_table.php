@@ -16,12 +16,12 @@ class CreateFuentesTable extends Migration
         Schema::create('fuentes', function (Blueprint $table) {
             $table->increments('id');
             $table->string('nombre')->unique(); 
-            $table->string('id_externo');
-            $table->string('id_interno');
-            $table->string('contacto_fuente');
-            $table->string('correo_fuente');
-            $table->string('telefono1_fuente');
-            $table->string('telefono2_fuente');
+            $table->string('id_interno')->unique();
+            $table->string('id_externo')->nullable();
+            $table->string('contacto_fuente')->nullable();
+            $table->string('correo_fuente')->nullable();
+            $table->string('telefono1_fuente')->nullable();
+            $table->string('telefono2_fuente')->nullable();
             $table->timestamps();
         });
     }

@@ -12,6 +12,6 @@ class Categoria extends Model
     protected $guarded = [];
 
     public function etiquetas(){
-    	return $this->hasMany(Etiqueta::class);
+    	return $this->hasMany(Etiqueta::class, 'categoria_id');
     }
 }

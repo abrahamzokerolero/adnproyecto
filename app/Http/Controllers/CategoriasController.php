@@ -7,8 +7,6 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Etiqueta;
 use App\Categoria;
-use App\Http\Requests\CategoriaRequest;
-use App\Http\Requests\EtiquetaRequest;
 use Laracast\Flash\Flash;
 
 class CategoriasController extends Controller
@@ -21,17 +19,9 @@ class CategoriasController extends Controller
     public function index()
     {   
         $categorias = DB::table('categorias')->get();
-        return view('categorias.index')->with('categorias', $categorias);
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        return view('categorias.create');
+        return view('categorias.index', [
+            'categorias' => $categorias
+        ]);
     }
 
     /**
@@ -40,8 +30,17 @@ class CategoriasController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(CategoriaRequest $request)
+    public function store(Request $request)
     {
+        $this->validate($request, [
+            'nombre' =>'min:3|max:90|required|unique:categorias' 
+        ],[
+            'nombre.min' => 'El tamaño minimo del nombre de la categoria es de 3 caracteres',
+            'nombre.max' => 'El tamaño maximo del nombre de la categoria deber de ser de 90 caracteres',
+            'nombre.required' => 'El campo debe ser llenado',
+            'nombre.unique' => 'El nombre de la categoria asigando ya se encuentra en uso'
+        ]);
+
         $categoria = Categoria::create([
             'nombre' => $request->input('nombre'),
             'created_at' => Carbon::now(),
@@ -89,15 +88,21 @@ class CategoriasController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(CategoriaRequest $request, $id)
-    {
+    public function update(Request $request, $id)
+    {   
+        $this->validate($request, [
+            'nombre' =>"min:3|max:90|required|unique:categorias,nombre,$id", 
+        ],[
+            'nombre.min' => 'El tamaño minimo del nombre de la categoria es de 3 caracteres',
+            'nombre.max' => 'El tamaño maximo del nombre de la categoria deber de ser de 90 caracteres',
+            'nombre.required' => 'El campo debe ser llenado',
+        ]);
+
         $categoria = Categoria::find($id);
         $categoria->nombre = $request->nombre;
         $categoria->updated_at = Carbon::now();
         $categoria->save();
-
         Flash('La categoria cambio de nombre a: <b>' . $categoria->nombre . '</b>', 'success');
-
         return redirect()->route('categorias.index');
     }
 
@@ -115,26 +120,5 @@ class CategoriasController extends Controller
         Flash('La categoria ' .$categoria->nombre . ' fue eliminada exitosamente sin embargo debera asignar sus etiquetas manualmente', 'success');
 
         return redirect()->route('categorias.index');
-    }
-
-    public function create_etiqueta($id)
-    {
-        $categoria = Categoria::find($id);
-        return view('categorias.create_etiqueta')->with('categoria', $categoria);
-    }
-
-    public function create_etiqueta_store(EtiquetaRequest $request)
-    {
-
-        $categoria = Etiqueta::create([
-            'nombre' => $request->input('nombre'),
-            'categoria_id' => $request->input('categoria_id'),
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
-        ]);
-        
-        flash('La etiqueta se ingreso correctamente', 'success');
-
-        return redirect('categorias');
     }
 }

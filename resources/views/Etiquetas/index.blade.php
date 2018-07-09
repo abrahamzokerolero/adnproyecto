@@ -7,33 +7,40 @@
 <!-- <script En las vistas de tablas no se inluye el script de laravel ya que causa conflicto con el datatable -->
 
 @section('content')
+	
+	<div class="card-title p-3 mb-3 card-header">
+		<img src="{{asset('images/etiquetasSA.png')}}" alt="" width="80" height="70" class=""><span class="h4 ml-3 font-weight-bold"> ETIQUETAS SIN ASIGNAR</span>
+		<div class="float-right">
+			@can('categorias.index')
+			<a href="{{route('categorias.index')}}" class="btn btn-secondary mt-2 ml-3"><i class="fa fa-chevron-left mr-2"></i>Ir a categorias y etiquetas</a>
+			@endcan
+		</div>
+	</div>
+
 	<link rel="stylesheet" href="https://cdn.datatables.net/1.10.16/css/jquery.dataTables.min.css">
 	<div class="container">
-		<div class="flex-row">
-			<h5 class="btn btn-secondary float-left"> Etiquetas </b></h5>
-			<a href="{{route('categorias.index')}}" class="btn btn-info ml-2 mb-2"> Volver a categorias</a>
-			<a href="{{route('etiquetas.create')}}" class="btn btn-success float-right ml-2 mb-2"><i class="fa fa-plus-circle"></i> Añadir etiquetas</a>
-		</div>
 		<table id="myTable" class="table">
-			<thead class="card-header">
+			<thead class="card-header bg-success text-white">
 				<td>ID</td>
 				<td>Nombre</td>
-				<td>Categoria</td>
-				<td>Acciones</td>
+				<td class="text-right">Acciones</td>
 			</thead>
 			<tbody>
 				@foreach($etiquetas as $etiqueta)
 					<tr> 
 						<td>{{$etiqueta->id}}</td>
 						<td>{{$etiqueta->nombre}}</td>
-						<td><a href="/categorias/{{$etiqueta->categoria_id}}">{{$etiqueta->categoria_id}}</a></td>
 						<td class="text-right">
+							@can('etiquetas.destroy')
 							<a href="{{ route('etiquetas.destroy', $etiqueta->id)}}"  onclick="return confirm('Desea eliminar la etiqueta seleccionada?' )" class="btn btn-danger">
 								<i class="fa fa-times"></i>
 							</a> 
+							@endcan
+							@can('etiquetas.edit')
 							<a href="{{ route('etiquetas.edit', $etiqueta->id)}}" class="btn btn-warning" >
 								<i class="fa fa-pencil-square-o"></i>
 							</a>
+							@endcan
 						</td>
 					</tr>
 				@endforeach

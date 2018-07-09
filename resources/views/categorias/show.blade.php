@@ -5,19 +5,23 @@
 @endsection
 
 @section('content')
-	
-
 	<link rel="stylesheet" href="https://cdn.datatables.net/1.10.16/css/jquery.dataTables.min.css">
 	<div class="container">
-		<div class="flex-row">
-			<h5 class="btn btn-secondary float-left"> Etiquetas en: <b>{{$categoria->nombre}} </b></h5>
-			<a href="{{route('categorias.etiqueta.create', $categoria->id)}}" class="btn btn-success float-right mb-2"><i class="fa fa-bookmark"></i> Añadir etiqueta a categoria</a>
+		<div class="card-title p-3 card-header">
+			<img src="{{asset('images/etiquetas.png')}}" alt="" width="80" height="70" class=""><span class="h4 ml-3 font-weight-bold"> ETIQUETAS EN: <b>{{$categoria->nombre}} </b></span>
+			<div class="float-right">
+				@can('categorias.index')
+				<a href="{{route('categorias.index')}}" class="btn btn-secondary mt-2 ml-3"><i class="fa fa-chevron-left mr-2"></i>Volver a categorias</a>
+				@endcan
+			</div>
+				
 		</div>
+	
 		<table id="myTable" class="table">
-			<thead class="card-header">
+			<thead class="card-header bg-success text-white">
 				<td>Id</td>
 				<td>Nombre</td>
-				<td>Categoria</td>
+				<td>Numero de Perfiles asociados</td>
 				<td>Acciones</td>
 			</thead>
 			<tbody>
@@ -25,14 +29,18 @@
 					<tr>
 						<td>{{$etiqueta->id}}</td>
 						<td>{{$etiqueta->nombre}}</td>
-						<td>{{$etiqueta->categoria->nombre}}</td>
+						<td>{{$etiqueta->created_at}}</td>
 						<td class="text-right">
+							@can('etiquetas.destroy')
 							<a href="{{ route('etiquetas.destroy', $etiqueta->id)}}"  onclick="return confirm('Desea eliminar la etiqueta seleccionada?' )" class="btn btn-danger">
 								<i class="fa fa-times"></i>
-							</a> 
-							<a href="{{ route('etiquetas.edit', $etiqueta->id)}}" class="btn btn-warning" >
+							</a>
+							@endcan
+							@can('etiquetas.edit')
+							<a href="{{ route('etiquetas.edit', $etiqueta->id) }}" class="btn btn-warning" >
 								<i class="fa fa-pencil-square-o"></i>
 							</a></td>
+							@endcan
 					</tr>
 				@endforeach
 			</tbody>

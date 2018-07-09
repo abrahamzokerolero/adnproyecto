@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title')
-    ADN México | Crear categoria
+    ADN México | Editar etiqueta
 @endsection
 
 @section('script')
@@ -11,6 +11,15 @@
 
 @section('content')
 <div class="container">
+
+	<div class="card-title p-3 mb-3 card-header">
+		<img src="{{asset('images/etiquetas.png')}}" alt="" width="80" height="70" class=""><span class="h4 ml-3 font-weight-bold"> EDITAR ETIQUETA</span>
+		<div class="float-right">
+			@can('categorias.index')
+			<a href="{{route('categorias.index')}}" class="btn btn-secondary mt-2 ml-3"><i class="fa fa-chevron-left mr-2"></i>Volver a categorias</a>
+			@endcan
+		</div>
+	</div>
 
 	<!-- Codigo de muestra de errores traidos desde las condiciones del Request de categorias -->
 	@if(count($errors) > 0)
@@ -25,8 +34,8 @@
 
 	<!-- Formulario edicion de una etiqueta-->
 
-	<div class="container w-50">
-		<p class="card-header">Actualizacion de datos</p>
+	<div class="container w-75">
+		<p class="card-header bg-success">Actualizacion de datos</p>
 	
 		{!! Form::open(array('route' => ['etiquetas.update',$etiqueta->id], 'method' => 'PUT')) !!}﻿
 
@@ -49,9 +58,6 @@
 
 			<div class="form-group text-right">
 				{!! Form::submit('Guardar', ['class' => 'btn btn-primary mr-3']) !!}
-				
-				<div class="btn btn-primary"><a href="{{route('etiquetas.index')}}" class="text-white">Regresar</a></div>
-
 			</div>
 			{!! Form::close() !!}
 			

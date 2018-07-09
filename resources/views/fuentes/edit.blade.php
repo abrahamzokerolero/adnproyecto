@@ -11,6 +11,15 @@
 
 @section('content')
 <div class="container">
+	
+	<div class="card-title p-3 mb-5 card-header">
+		<img src="{{asset('images/fuentes.png')}}" alt="" width="100" height="70" class=""><span class="h4 ml-3 font-weight-bold"> EDICION DE FUENTE </span>
+		<div class="float-right">
+			@can('fuentes.create')
+			<a href="{{route('fuentes.index')}}" class="btn btn-info float-right mr-3 mb-2"><i class="fa fa-chevron-left mr-2"></i> Regresar a la lista de fuentes</a>
+			@endcan
+		</div>
+	</div>
 
 	<!-- Codigo de muestra de errores traidos desde las condiciones del Request de categorias -->
 	@if(count($errors) > 0)
@@ -25,8 +34,8 @@
 
 	<!-- Formulario edicion de una etiqueta-->
 
-	<div class="container w-50">
-		<p class="card-header">Actualizacion de datos</p>
+	<div class="container w-75">
+		<p class="card-header bg-info">Actualizacion de datos</p>
 	
 		{!! Form::open(array('route' => ['fuentes.update',$fuente->id], 'method' => 'PUT')) !!}﻿
 
