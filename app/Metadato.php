@@ -9,7 +9,7 @@ use App\PerfilGenetico;
 class Metadato extends Model
 {
     protected $table = 'metadatos';
-
+    //protected $dateFormat = 'M j Y h:i:s';
     protected $guarded = [];
 
     public function tipo_de_metadato(){

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Categoria;
 use App\Etiqueta;
+use App\EtiquetaAsignada;
 use Laracast\Flash\Flash;
 
 
@@ -15,13 +16,13 @@ class EtiquetasController extends Controller
     public function index()
     {   
 
-        $categoria_sin_asignar = Categoria::where('nombre', '=', 'SIN ASIGNAR')->first();
+        $categoria_sin_asignar = Categoria::where('nombre', '=', 'SIN ASIGNAR')->where('desestimado', '=', 0)->first();
 
         if($categoria_sin_asignar == null){
-            $etiquetas = Etiqueta::where('categoria_id','=',null)->get();            
+            $etiquetas = Etiqueta::where('categoria_id','=',null)->where('desestimado', '=', 0)->get();            
         }
         else{
-            $etiquetas = Etiqueta::where('categoria_id','=',null)->orWhere('categoria_id','=', $categoria_sin_asignar->id)->get();  
+            $etiquetas = Etiqueta::where('categoria_id','=',null)->where('desestimado', '=', 0)->orWhere('categoria_id','=', $categoria_sin_asignar->id)->where('desestimado', '=', 0)->get();  
         }
         return view('etiquetas.index',[
             'etiquetas' => $etiquetas,
@@ -71,8 +72,8 @@ class EtiquetasController extends Controller
                         /* la funcion trim elimina los espacios en blanco al principio y al final de la cadena*/
                         'nombre' => trim($etiquetas[$i]),
                         'categoria_id' => $request->categoria_id,
-                        'created_at' => Carbon::now(),
-                        'updated_at' => Carbon::now(),
+                        'created_at' => date("Y-m-d H:i:s"),
+                        'updated_at' => date("Y-m-d H:i:s"),
                     ]);
                 }
             }
@@ -80,8 +81,8 @@ class EtiquetasController extends Controller
                 $etiqueta = Etiqueta::create([
                     'nombre' => $request->input('nombre'),
                     'categoria_id' => $request->categoria_id,
-                    'created_at' => Carbon::now(),
-                    'updated_at' => Carbon::now(),
+                    'created_at' => date("Y-m-d H:i:s"),
+                    'updated_at' => date("Y-m-d H:i:s"),
                 ]);  
             }
             flash('Se realizaron exitosamente los cambios', 'success');
@@ -144,7 +145,7 @@ class EtiquetasController extends Controller
         else{
             $etiqueta->nombre = $request->nombre;
             $etiqueta->categoria_id = $request->categoria_id;
-            $etiqueta->updated_at = Carbon::now();
+            $etiqueta->updated_at = date("Y-m-d H:i:s");
             $etiqueta->save();
             Flash('La etiqueta se actualizo correctamente', 'success');
             return redirect('categorias/'. $request->categoria_id);
@@ -160,7 +161,15 @@ class EtiquetasController extends Controller
     public function destroy($id)
     {
         $etiqueta = Etiqueta::find($id);
-        $etiqueta->delete();
+
+        $perfiles_etiquetados = EtiquetaAsignada::where('id_etiqueta', '=', $etiqueta->id)->get();
+
+        foreach ($perfiles_etiquetados as $perfil_etiquetado) {
+            $perfil_etiquetado->delete();
+        }
+
+        $etiqueta->desestimado = 1;
+        $etiqueta->save();
 
         Flash('La etiqueta ' .$etiqueta->nombre . ' fue eliminada exitosamente', 'success');
 

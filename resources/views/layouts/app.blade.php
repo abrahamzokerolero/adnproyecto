@@ -44,8 +44,10 @@
                     <ul class="navbar-nav ml-auto"> 
                         <!-- Authentication Links -->
                         @guest
-                            <li><a class="nav-link" href="{{ route('login') }}">{{ __('Entrar') }}</a></li>
-                            <li><a class="nav-link" href="{{ route('register') }}">{{ __('Registrar') }}</a></li>
+                            <li><a class="nav-link" href="{{ route('login') }}">{{ __('Acceder') }}</a></li>
+                            
+                            <!--<li><a class="nav-link" href="{{ route('register') }}">{{ __('Registrar') }}</a></li>-->
+
                         @else
                             <li class="nav-item dropdown">
                                 <a class="nav-link" href="{{route('users.personal_edit')}}"> 
@@ -127,35 +129,35 @@
                             @endcan
                             @can('perfiles_geneticos.revision')
                             <li class="nav-item">
-                              <a class="nav-link pl-5" href="{{route('perfiles_geneticos.revision')}}">Perfiles para revision <b class=" btn btn-danger btn-sm disabled ml-1">(
+                              <a class="nav-link pl-5" href="{{route('perfiles_geneticos.revision')}}">Perfiles para revision <b class=" border p-1 bg-warning rounded disabled">(
                                 <?php $usuario = App\User::find(Illuminate\Support\Facades\Auth::id());?>
 
                                 @if($usuario->estado->nombre == 'CNB')
-                                  {{App\PerfilGenetico::where('requiere_revision','=',1)->where('es_perfil_repetido','=',0)->where('desestimado','=',0)->count()}})
+                                  {{App\PerfilGenetico::where('requiere_revision','=',1)->where('es_perfil_repetido','=',0)->where('desestimado','=',0)->count()}} )
                                 @else
-                                  {{App\PerfilGenetico::where('requiere_revision','=',1)->where('es_perfil_repetido','=',0)->where('desestimado','=',0)->where('id_estado','=', $usuario->estado->id)->count()}})
+                                  {{App\PerfilGenetico::where('requiere_revision','=',1)->where('es_perfil_repetido','=',0)->where('desestimado','=',0)->where('id_estado','=', $usuario->estado->id)->count()}} )
                                 @endif
                               </b></a>
                             </li>
                             <li class="nav-item">
-                              <a class="nav-link pl-5" href="{{route('perfiles_geneticos.duplicados')}}">Perfiles duplicados <b class=" btn btn-danger btn-sm disabled ml-3">(
+                              <a class="nav-link pl-5" href="{{route('perfiles_geneticos.duplicados')}}">Perfiles duplicados <b class=" border p-1 bg-warning rounded disabled ml-1">(
                                <?php $usuario = App\User::find(Illuminate\Support\Facades\Auth::id());?>
 
                                 @if($usuario->estado->nombre == 'CNB')
-                                  {{App\PerfilGenetico::where('es_perfil_repetido','=',1)->where('desestimado','=',0)->count()}})
+                                  {{App\PerfilGenetico::where('es_perfil_repetido','=',1)->where('desestimado','=',0)->count()}} )
                                 @else
-                                  {{App\PerfilGenetico::where('id_estado', '=', $usuario->id_estado)->where('es_perfil_repetido','=',1)->where('id_estado_perfil_original','=',$usuario->id_estado)->where('desestimado', '=', 0)->count()}})
+                                  {{App\PerfilGenetico::where('id_estado', '=', $usuario->id_estado)->where('es_perfil_repetido','=',1)->where('id_estado_perfil_original','=',$usuario->id_estado)->where('desestimado', '=', 0)->count()}} )
                                 @endif
                                 </b></a>
                             </li>
                             @endcan
                             <li class="nav-item">
-                              <a class="nav-link pl-5" href="{{route('perfiles_geneticos.desestimados')}}">Perfiles Desestimados <b class=" btn btn-danger btn-sm disabled ml-1">(
+                              <a class="nav-link pl-5" href="{{route('perfiles_geneticos.desestimados')}}">Perfiles Desestimados <b class=" border p-1 bg-warning rounded disabled ml-1">(
                                <?php $usuario = App\User::find(Illuminate\Support\Facades\Auth::id());?>
                                 @if($usuario->estado->nombre == 'CNB')
-                                  {{App\PerfilGenetico::where('desestimado','=',1)->count()}})
+                                  {{App\PerfilGenetico::where('desestimado','=',1)->count()}} )
                                 @else
-                                  {{App\PerfilGenetico::where('id_estado', '=', $usuario->id_estado)->where('desestimado','=',1)->count()}})
+                                  {{App\PerfilGenetico::where('id_estado', '=', $usuario->id_estado)->where('desestimado','=',1)->count()}} )
                                 @endif
                                 </b></a>
                             </li>
@@ -194,7 +196,7 @@
                             @endcan
                             @can('etiquetas.index')
                             <li class="nav-item">
-                              <a class="nav-link pl-5" href="{{route('etiquetas.index')}}">Etiquetas sin asignar <b class="btn btn-danger btn-sm disabled"> ({{App\Etiqueta::where('categoria_id', '=', null)->orWhere('categoria_id', '=', 9)->count()}})</b></a>
+                              <a class="nav-link pl-5" href="{{route('etiquetas.index')}}">Etiquetas sin asignar <b class="btn btn-danger btn-sm disabled"> ({{App\Etiqueta::where('categoria_id', '=', null)->where('desestimado', '=', 0)->orWhere('categoria_id', '=', 9)->where('desestimado', '=', 0)->count()}})</b></a>
                             </li>
                             @endcan
                         </ul>

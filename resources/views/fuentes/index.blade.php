@@ -7,6 +7,7 @@
 <!-- <script En las vistas de tablas no se inluye el script de laravel ya que causa conflicto con el datatable -->
 
 @section('content')
+	<?php $usuario = App\User::find(Illuminate\Support\Facades\Auth::id());?>
 	<div class="card-block mt-3">
 		<link rel="stylesheet" href="https://cdn.datatables.net/1.10.16/css/jquery.dataTables.min.css">
 		<div class="container">
@@ -39,9 +40,11 @@
 							<td>{{$fuente->telefono1_fuente}}<br>{{$fuente->telefono2_fuente}}</td>
 							<td>
 								@can('fuentes.destroy')
-								<a href="{{ route('fuentes.destroy', $fuente->id)}}"  onclick="return confirm('Desea eliminar la fuente seleccionada?' )" class="btn btn-danger btn-sm">
-									<i class="fa fa-times"></i>
-								</a> 
+									@if($usuario->estado->nombre == 'CNB')
+										<a href="{{ route('fuentes.destroy', $fuente->id)}}"  onclick="return confirm('Desea eliminar la fuente seleccionada?' )" class="btn btn-danger btn-sm">
+											<i class="fa fa-times"></i>
+										</a>
+									@endif 
 								@endcan
 								@can('fuentes.edit')
 								<a href="{{ route('fuentes.edit', $fuente->id)}}" class="btn btn-warning btn-sm" >

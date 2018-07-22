@@ -7,7 +7,6 @@
 <!-- <script En las vistas de tablas no se inluye el script de laravel ya que causa conflicto con el datatable -->
 
 @section('content')
-
 	<div class="card-block">
 		<link rel="stylesheet" href="https://cdn.datatables.net/1.10.16/css/jquery.dataTables.min.css">
 		<div class="container">
@@ -64,47 +63,64 @@
 					<td class="text-center">Fecha de creacion</td>
 				</thead>
 				<tbody>
-					@foreach($perfiles_geneticos as $perfil_genetico)
-						<tr>
-							<td>{{$perfil_genetico->identificador}}</td>
-							@if($perfil_genetico->desestimado == 0 && $perfil_genetico->es_perfil_repetido == 0)
-								<td><a href="{{ route('perfiles_geneticos.show', $perfil_genetico->id)}}">{{$perfil_genetico->id_externo}}</a></td>
-							@else
-								@if($perfil_genetico->es_perfil_repetido == 1 && $perfil_genetico->desestimado == 0)
-									<td>
-										<a href="{{ route('perfiles_geneticos.validar_duplicado', $perfil_genetico)}}">{{$perfil_genetico->id_externo}}</a>
-									</td>
-								@endif
-							@endif
-							<td class="text-center"><span class="btn btn-outline-danger btn-sm disabled">{{$perfil_genetico->numero_de_marcadores}}</span></td>
-							<td class="text-center"><span class="btn btn-light btn-sm disabled">{{$perfil_genetico->numero_de_homocigotos}}</span></td>
-							<td class="text-center">{{$perfil_genetico->usuario->name}}</td>
-							<td class="text-center">
-								@if($perfil_genetico->es_perfil_repetido == 0)
-									@if($perfil_genetico->requiere_revision)
-										<span class="btn btn-warning btn-sm disabled">si</span>
-									@else
-										<span class="btn btn-success btn-sm disabled">no</span>
-									@endif
-								@else
-									<span class="btn btn-danger btn-sm disabled">duplicado</span>
-								@endif
-							</td>
-							<td class="text-center">{{$perfil_genetico->created_at}}</td>
-						</tr>
-					@endforeach
+
 				</tbody>
 			</table>
 			<script src="https://code.jquery.com/jquery-3.3.1.js"></script>
 			<script src="https://cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>
 			<script>
 				$(document).ready(function() {
-				  $('#myTable').DataTable({
-				  	"order": [ 0 , 'desc'],
-				    "language": {
-				      "url": "http://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"
-				    }
-				  });
+				  $(function() {
+					  var data = <?php echo $perfiles_geneticos;?>;
+					  console.log(data);
+					  var oTable = $('#myTable').DataTable({
+				            data:data,
+					        columnDefs: [{"className": "dt-center", "targets": "_all"}],
+				            columns: [
+						        { data: 'identificador',
+							    	render: function ( data, type, row ) {
+							    		if(row.es_perfil_repetido == 0 || row.desestimado == 1){
+							    			return '<a  href="../perfiles_geneticos/'+ row.id +'">'+ data + '</a>';
+							    		}
+							    		else{
+							    			if(row.es_perfil_repetido == 1 && row.desestimado == 0){
+							    				return '<a  href="../perfiles/'+ row.id +'/validar_duplicado">'+ data + '</a>';
+							    			}
+							    		}
+								    }
+							    },
+						        { data: 'id_externo' },
+						        { data: 'numero_de_marcadores'},
+						        { data: 'numero_de_homocigotos'},
+						        { data: 'usuario' ,
+						        	render: function ( data, type, row ) {
+								        return data.name ;
+								    }
+						        },
+						        { data: 'requiere_revision',
+						        	render: function ( data, type, row ) {
+								        if(row.desestimado == 0){
+								        	if(row.es_perfil_repetido == 0){
+									        	if(data == 0){
+										        	return '<span class="btn btn-sm btn-success disabled" >no</span>' ;
+										        }
+										        else{
+										        	return '<span class="btn btn-sm btn-warning disabled" >si</span>'
+										        }	
+									        }
+									        else{
+									        	return '<span class="btn btn-sm btn-danger disabled" >duplicado</span>' ;
+									        }
+								        }
+								        else{
+								        	return '<span class="btn btn-sm btn-danger disabled" >desestimado</span>'
+								        }
+								    }
+						    	},
+						        { data: 'created_at'},
+						    ]
+				        });
+					});
 				});
 			</script>
 		</div>

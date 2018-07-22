@@ -26,8 +26,11 @@ class CreateUsersTable extends Migration
             $table->string('username')->unique();
             $table->string('avatar')->nullable();
             $table->integer('id_estado')->unsigned()->nullable();
+            $table->boolean('desestimado')->default(false);
             $table->rememberToken();
-            $table->timestamps();
+            $table->date('created_at')->default(date("Y-m-d H:i:s"));
+            $table->date('updated_at')->default(date("Y-m-d H:i:s"));
+
         });
     }
 

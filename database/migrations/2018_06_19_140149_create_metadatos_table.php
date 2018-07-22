@@ -18,10 +18,11 @@ class CreateMetadatosTable extends Migration
             $table->integer('id_perfil_genetico')->unsigned();
             $table->integer('id_tipo_de_metadato')->unsigned();
             $table->string('dato');
-            $table->timestamps();
+            $table->date('created_at')->default(date("Y-m-d H:i:s"));
+            $table->date('updated_at')->default(date("Y-m-d H:i:s"));
 
-            $table->foreign('id_perfil_genetico')->references('id')->on('perfiles_geneticos')->onDelete('cascade');
-            $table->foreign('id_tipo_de_metadato')->references('id')->on('tipos_de_metadatos')->onDelete('cascade');
+            $table->foreign('id_perfil_genetico')->references('id')->on('perfiles_geneticos');
+            $table->foreign('id_tipo_de_metadato')->references('id')->on('tipos_de_metadatos');
             
         });
     }

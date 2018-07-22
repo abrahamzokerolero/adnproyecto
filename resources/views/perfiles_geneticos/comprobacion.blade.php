@@ -6,9 +6,9 @@
 
 @section('script')
     <!-- Scripts -->
-    <script src="{{ asset('js/app.js') }}" defer></script>
     <link rel="stylesheet" href="{{asset('css/choices.min.css?version=3.0.4')}}">
   	<script src="{{asset('js/choices.min.js?version=3.0.4s')}}"></script>
+  	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 @endsection
 
 <!-- <script En las vistas de tablas no se inluye el script de laravel ya que causa conflicto con el datatable -->
@@ -20,7 +20,7 @@
 			background: #DDD;
 		}
 	</style>
-
+	<?php $usuario = App\User::find(Illuminate\Support\Facades\Auth::id());?>
 	<div class="card-block mb-3">
 		<div class="container">
 			<div class="card-title p-3 mb-3 card-header">
@@ -53,7 +53,7 @@
 						
 									<td>{{$marcador->nombre}}</td>
 									<td>{!!Form::text($alelo_1, null, ['class' => "text-center w-100 $alelo_1"])!!}</td>
-									@if($marcador->id_tipo_de_marcador == 2 &&  $marcador->nombre <> 'dys385' || $marcador->id_tipo_de_marcador == 3)
+									@if($marcador->id_tipo_de_marcador == 2 &&  $marcador->nombre <> 'dys385' || $marcador->id_tipo_de_marcador == 3 || $marcador->nombre == 'yindel')
 										<td>{!!Form::text($alelo_2, null, ['class' => "text-center w-100 $alelo_2", 'disabled'])!!}</td>
 									@else
 										<td>{!!Form::text($alelo_2, null, ['class' => "text-center w-100 $alelo_2"])!!}</td>
@@ -209,11 +209,43 @@
   									</div>
 									<div class="col">
 										<label for="etiquetas">Seleccionar etiquetas para los perfiles</label>
-										<select class="form-control" name="etiquetas[]" id="etiquetas" placeholder="Seleccione las etiquetas" multiple>
+										<select class="form-control etiquetas_ajax" name="etiquetas[]" id="etiquetas" placeholder="Seleccione las etiquetas" multiple>
 										@foreach($categorias as $categoria)
 											<optgroup label="{{ strtoupper($categoria->nombre)}}">
 												@foreach($categoria->etiquetas as $etiqueta)
-													<option value="{{$etiqueta->id}}">{{$etiqueta->nombre}}</option>
+													<option value="{{$etiqueta->id}}">{{$etiqueta->nombre}} <b>(
+											<?php $contador = 0; ?>
+											@if($usuario->estado->nombre == 'CNB')
+												{{Illuminate\Support\Facades\DB::table('etiquetas_asignadas')
+													->join('perfiles_geneticos', 'etiquetas_asignadas.id_perfil_genetico' , '=', 'perfiles_geneticos.id' )
+													->select('etiquetas_asignadas.id_etiqueta', 
+															 'etiquetas_asignadas.id_perfil_genetico',
+															 'perfiles_geneticos.id',
+															 'perfiles_geneticos.id_estado',
+															 'perfiles_geneticos.es_perfil_repetido',
+															 'perfiles_geneticos.desestimado'
+															)
+													->where('perfiles_geneticos.es_perfil_repetido', '=', 0)
+													->where('perfiles_geneticos.desestimado', '=', 0)
+													->where('etiquetas_asignadas.id_etiqueta', '=', $etiqueta->id)
+													->count()}}
+											@else
+												{{Illuminate\Support\Facades\DB::table('etiquetas_asignadas')
+													->join('perfiles_geneticos', 'etiquetas_asignadas.id_perfil_genetico' , '=', 'perfiles_geneticos.id' )
+													->select('etiquetas_asignadas.id_etiqueta', 
+															 'etiquetas_asignadas.id_perfil_genetico',
+															 'perfiles_geneticos.id',
+															 'perfiles_geneticos.id_estado',
+															 'perfiles_geneticos.es_perfil_repetido',
+															 'perfiles_geneticos.desestimado'
+															)
+													->where('perfiles_geneticos.es_perfil_repetido', '=', 0)
+													->where('perfiles_geneticos.desestimado', '=', 0)
+													->where('etiquetas_asignadas.id_etiqueta', '=', $etiqueta->id)
+													->where('perfiles_geneticos.id_estado', '=', $usuario->estado->id)
+													->count()}}
+											@endif
+										)</b></option>
 												@endforeach	
 											</optgroup>
 										@endforeach
@@ -229,29 +261,236 @@
   								</div>
   							</div>
 						</div>
+						{!!Form::close()!!}
+
+						<div class="card mb-5">
+							<!--Botones colapsables-->
+							
+							<span class="bg-warning form-control mensaje_de_error2 text-center mt-2 mb-2">Mensaje de error</span>
+							<script type="text/javascript"> $('.mensaje_de_error2').hide();</script>
+
+							@if($usuario->estado->nombre == 'CNB')
+
+							<div class="d-flex flex-row justify-content-between">
+								@can('categorias.store')
+								<div class="p-2">
+									<button class="btn btn btn-secondary" type="button" data-toggle="collapse" data-target="#collapseCategoria" aria-expanded="false" aria-controls="collapseExample">
+										<i class="fa fa-th-large"></i> Agregar categoria
+									</button>
+								</div>
+								@endcan
+								@can('etiquetas.store')
+								<div class="p-2">
+									<button class="btn btn-success" type="button" data-toggle="collapse" data-target="#collapseEtiquetas" aria-expanded="false" aria-controls="collapseExample">
+										<i class="fa fa-bookmark"></i> Agregar Etiquetas
+									</button>
+								</div>
+								@endcan
+							</div>
+
+							@endif
+
+							<div class="">
+								<!--formulario para cateorias colapsable-->
+								
+								<div class="collapse float-left mb-2 ml-3" id="collapseCategoria">
+								    <div class="card-header bg-secondary text-white">
+								  		Crear nueva categoria
+								  	</div>
+								  <div class="card">
+								  	{!! Form::open(['route' => 'importaciones_perfiles.crear_categoria', 'method'=> 'POST' ]) !!}
+									<div class="p-3">
+											<div class="form-group">
+												{!! Form::label('nombre' , 'Nombre')!!}
+												{!! Form::text('nombre' , null , [ 'class' => 'form-control input_categoria', 'placeholder'=> 'Ingrese una categoria' , 'required'])!!}
+											</div>
+											<div class="form-group">
+												{!! Form::submit('Guardar', ['class' => 'btn btn-primary mt-2 GuardarCategoria']) !!}
+											</div>
+									</div>
+									{!! Form::close() !!}
+								  </div>
+								</div>
+								
+								<!--Formulario para etiquetas colapsable-->
+								
+								<div class="collapse w-50 float-right mb-2 mr-3" id="collapseEtiquetas">
+								  	<div class="card">
+								  		<div class="card-header bg-success text-white">
+									  		Crear etiquetas
+									  	</div>
+								  		{!! Form::open(['route' => 'importaciones_perfiles.crear_etiquetas', 'method'=> 'POST' ]) !!}
+											<div class="p-3">
+												<div class="form-group">
+													<p class="text-info ">Pueden ser asignadas multiples etiquetas separandolas por una coma</p>
+													{!! Form::label('nombre' , 'Nombre')!!}
+													{!! Form::text('nombre' , null , [ 'class' => 'form-control EtiquetasAjax', 'placeholder'=> 'Ejemplo 1, Ejemplo 2, Ejemplo 3' , 'required'])!!}
+													<label for="categoria_id" class="mt-2">Categoria</label>
+													<select name="categoria_id" class="form-control select_categoria" required>
+													  <option disabled selected>Seleccione una categoria</option>
+													  @foreach($categorias as $categoria)
+													  	<option value="{{$categoria->id}}">{{$categoria->nombre}}</option>
+													  @endforeach
+													</select>
+												</div>
+												
+												<div class="form-group">
+													{!! Form::submit('Guardar', ['class' => 'btn btn-primary mr-3 GuardarEtiquetas']) !!}
+													<img src="{{asset('images/carga.gif')}}" width="120" height="120" id="carga">
+												</div>
+											</div>
+										{!! Form::close() !!}
+									</div>
+							</div>
+						</div>
 					</div>
 				</div>
-				{!!Form::close()!!}
+				
+
 		</div>
 	</div>
 	<script>
-      var multipleDefault = new Choices(document.getElementById('etiquetas'));
+      $(document).ready(function() {
 
-      var multipleFetch = new Choices('#choices-multiple-remote-fetch', {
-        placeholder: true,
-        placeholderValue: 'Pick an Strokes record',
-        maxItemCount: 5,
-      }).ajax(function(callback) {
-        fetch('https://api.discogs.com/artists/55980/releases?token=QBRmstCkwXEvCjTclCpumbtNwvVkEzGAdELXyRyW')
-          .then(function(response) {
-            response.json().then(function(data) {
-              callback(data.releases, 'title', 'title');
-            });
-          })
-          .catch(function(error) {
-            console.error(error);
-          });
-      });
+    	$('#carga').fadeOut();
+
+		function quitaacentos(t){
+	        á="a";é="e";í="i";ó="o";ú="u";ñ="n";ä="a";ë="e";ï= "i";ö="o";ü="u";
+	        acentos=/[áéíóúñäëïöü]/g;
+	        return t.replace(acentos,function($1){
+	            return eval($1);
+	        });
+	    }
+
+	    $(".GuardarCategoria").click(function(e){
+	        e.preventDefault();
+	        var form = $(this).parents('form');
+	        var url = form.attr('action');  
+	        var categoria = quitaacentos($(".input_categoria").val()).toUpperCase();
+	        if(categoria != "" ){
+	            $('.mensaje_de_error2').fadeOut();
+	            $.post(url, form.serialize(), function(result){
+	                $('.select_categoria').append('<option value="'+ result.categoria.id +'" selected="selected">'+ result.categoria.nombre  +'</option>');
+	                $('.mensaje_de_error2').text("Categoria agregada exitosamente");
+	                $('.mensaje_de_error2').removeClass('bg-warning');
+	                $('.mensaje_de_error2').addClass('bg-success text-white');
+	                $('.mensaje_de_error2').fadeIn();
+
+	            }).fail(function(jqXHR, textStatus, errorThrown){
+	                $('.mensaje_de_error2').addClass('bg-warning');
+	                $('.mensaje_de_error2').text(jqXHR.responseJSON.errors.nombre[0]);
+	                $('.mensaje_de_error2').fadeIn()
+	            });
+	        }
+	        else{
+	        	$('.mensaje_de_error2').addClass('bg-warning');
+                $('.mensaje_de_error2').text('Debe ingresar un nombre para la categoria');
+                $('.mensaje_de_error2').fadeIn()
+	        }
+	    });
+
+	    $(".GuardarEtiquetas").click(function(e){
+	        e.preventDefault();
+	        $('.GuardarEtiquetas').text("Espere un momento");
+            $('.GuardarEtiquetas').addClass('disabled');
+            $('#carga').fadeIn();
+	        var form = $(this).parents('form');
+	        var url = form.attr('action');  
+	        var categoria = $(".select_categoria").val();
+	        var etiquetas = $(".EtiquetasAjax").val();
+	        if(categoria != null && etiquetas != "" ){
+	            $('.mensaje_de_error2').fadeOut();
+	            $.post(url, form.serialize(), function(result){
+	            	console.log(result.categorias);
+	                multipleDefault.destroy();
+	                for(i in result.categorias){
+	                	//result.categorias[i].nombre       Nombre de las categorias
+	                	//result.categorias[i].id 			Id de de las categorias
+	                	
+	                	$("select[name='etiquetas[]']").append('<optgroup id="' + result.categorias[i].nombre + '" label="'+ result.categorias[i].nombre +'"></optgroup>');
+	                	for(x in result.categorias[i].etiquetas){
+	                		$('optgroup[id="'+ result.categorias[i].nombre +'"]').append('<option value='+ result.categorias[i].etiquetas[x].id +'>'+ '\t' + result.categorias[i].etiquetas[x].nombre +  ' (' +  result.categorias[i].etiquetas[x].perfiles_geneticos_asociados.length   +    ')</option>');	
+	                	}
+	                }
+
+	                multipleDefault = new Choices(document.getElementById('etiquetas'));
+
+	                multipleFetch = new Choices('#choices-multiple-remote-fetch', {
+					placeholder: true,
+					placeholderValue: 'Pick an Strokes record',
+					maxItemCount: 5,
+					}).ajax(function(callback) {
+					fetch('https://api.discogs.com/artists/55980/releases?token=QBRmstCkwXEvCjTclCpumbtNwvVkEzGAdELXyRyW')
+					  .then(function(response) {
+					    response.json().then(function(data) {
+					      callback(data.releases, 'title', 'title');
+					    });
+					  })
+					  .catch(function(error) {
+					    console.error(error);
+					  });
+					});
+	                
+	                $('.mensaje_de_error2').text("Etiqueta(s) agregada(s) exitosamente");
+	                $('.mensaje_de_error2').removeClass('bg-warning');
+	                $('.mensaje_de_error2').addClass('bg-success text-white');
+	                $('.mensaje_de_error2').fadeIn();
+
+	                $('.GuardarEtiquetas').text("Guardar");
+		            $('.GuardarEtiquetas').removeClass('disabled');
+		            $('#carga').fadeOut();
+
+	            }).fail(function(jqXHR, textStatus, errorThrown){
+	                $('.mensaje_de_error2').addClass('bg-warning');
+	                $('.mensaje_de_error2').text(jqXHR.responseJSON.errors.nombre[0]);
+	                $('.mensaje_de_error2').fadeIn()
+	                $('.GuardarEtiquetas').text("Guardar");
+		            $('.GuardarEtiquetas').removeClass('disabled');
+		            $('#carga').fadeOut();
+	            });
+	        }
+	        else{
+	        	if(categoria == null){
+	        		$('.mensaje_de_error2').addClass('bg-warning');
+	                $('.mensaje_de_error2').text('Debe seleccinar una categoria para las etiquetas');
+	                $('.mensaje_de_error2').fadeIn();
+	                $('.GuardarEtiquetas').text("Guardar");
+		            $('.GuardarEtiquetas').removeClass('disabled');
+		            $('#carga').fadeOut();
+	
+	        	}
+	        	else{
+	        		$('.mensaje_de_error2').addClass('bg-warning');
+	                $('.mensaje_de_error2').text('Debe ingresar al menos el nombre de una etiqueta');
+	                $('.mensaje_de_error2').fadeIn()
+	                $('.GuardarEtiquetas').text("Guardar");
+		            $('.GuardarEtiquetas').removeClass('disabled');
+		            $('#carga').fadeOut();
+	
+	        	}
+	        	
+	        }
+	    });
+
+	    var multipleDefault = new Choices(document.getElementById('etiquetas'));
+
+		var multipleFetch = new Choices('#choices-multiple-remote-fetch', {
+		placeholder: true,
+		placeholderValue: 'Pick an Strokes record',
+		maxItemCount: 5,
+		}).ajax(function(callback) {
+		fetch('https://api.discogs.com/artists/55980/releases?token=QBRmstCkwXEvCjTclCpumbtNwvVkEzGAdELXyRyW')
+		  .then(function(response) {
+		    response.json().then(function(data) {
+		      callback(data.releases, 'title', 'title');
+		    });
+		  })
+		  .catch(function(error) {
+		    console.error(error);
+		  });
+		});
+
+    });
   </script>
 
   <script

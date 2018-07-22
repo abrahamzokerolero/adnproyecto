@@ -5,6 +5,7 @@
 @endsection
 
 @section('content')
+	<?php $usuario = App\User::find(Illuminate\Support\Facades\Auth::id());?>
 	<link rel="stylesheet" href="https://cdn.datatables.net/1.10.16/css/jquery.dataTables.min.css">
 	<div class="container">
 		<div class="card-title p-3 card-header">
@@ -31,11 +32,13 @@
 						<td>{{$etiqueta->nombre}}</td>
 						<td>{{$etiqueta->created_at}}</td>
 						<td class="text-right">
-							@can('etiquetas.destroy')
-							<a href="{{ route('etiquetas.destroy', $etiqueta->id)}}"  onclick="return confirm('Desea eliminar la etiqueta seleccionada?' )" class="btn btn-danger">
-								<i class="fa fa-times"></i>
-							</a>
-							@endcan
+							@if($usuario->estado->nombre == 'CNB')
+								@can('etiquetas.destroy')
+								<a href="{{ route('etiquetas.destroy', $etiqueta->id)}}"  onclick="return confirm('Desea eliminar la etiqueta seleccionada?' )" class="btn btn-danger">
+									<i class="fa fa-times"></i>
+								</a>
+								@endcan
+							@endif
 							@can('etiquetas.edit')
 							<a href="{{ route('etiquetas.edit', $etiqueta->id) }}" class="btn btn-warning" >
 								<i class="fa fa-pencil-square-o"></i>

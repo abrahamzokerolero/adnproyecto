@@ -9,13 +9,14 @@ use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Laracast\Flash\Flash;
 use Illuminate\Support\Facades\Auth;    // Para obtener datos del usuario en la session
+use Faker\Generator as Faker;
 
 class UsersController extends Controller
 {
 
     public function index()
     {   
-        $usuarios = User::get();
+        $usuarios = User::where('desestimado','=', 0)->get();
         return view('users.index', [
             'usuarios' => $usuarios,
         ]);
@@ -66,7 +67,8 @@ class UsersController extends Controller
     public function destroy($id)
     {
         $usuario = User::find($id);
-        $usuario->delete();
+        $usuario->desestimado = 1;
+        $usuario->save();
 
         Flash('El usuario ' .$usuario->name . ' fue eliminado exitosamente', 'success');
 
@@ -81,7 +83,6 @@ class UsersController extends Controller
     }
 
     public function update_perfil_personal(Request $request, $id){
-
         $user = User::find($id);
         $user->update($request->all());
         flash('Su perfil fue actualizado correctamente', 'success');

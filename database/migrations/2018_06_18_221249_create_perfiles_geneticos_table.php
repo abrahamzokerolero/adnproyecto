@@ -28,16 +28,18 @@ class CreatePerfilesGeneticosTable extends Migration
             $table->integer('id_perfil_original')->unsigned()->nullable();
             $table->integer('id_estado_perfil_original')->unsigned()->nullable();
             $table->integer('id_estado')->unsigned()->nullable();
+            $table->string('cadena_unica')->nullable();
             $table->boolean('desestimado')->default(false);;
-            $table->timestamps();
+            $table->date('created_at')->default(date("Y-m-d H:i:s"));
+            $table->date('updated_at')->default(date("Y-m-d H:i:s"));
 
-            $table->foreign('id_importacion')->references('id')->on('importaciones_perfiles')->onDelete('cascade');
-            $table->foreign('id_usuario')->references('id')->on('users')->onDelete('set null');
-            $table->foreign('id_fuente')->references('id')->on('fuentes')->onDelete('set null');
-            $table->foreign('id_estado')->references('id')->on('estados')->onDelete('set null');
-            $table->foreign('id_perfil_original')->references('id')->on('perfiles_geneticos')->onDelete('set null');
-            $table->foreign('id_usuario_reviso')->references('id')->on('users')->onDelete('set null');
-            $table->foreign('id_estado_perfil_original')->references('id')->on('estados')->onDelete('set null');
+            $table->foreign('id_importacion')->references('id')->on('importaciones_perfiles');
+            $table->foreign('id_usuario')->references('id')->on('users');
+            $table->foreign('id_fuente')->references('id')->on('fuentes');
+            $table->foreign('id_estado')->references('id')->on('estados');
+            $table->foreign('id_perfil_original')->references('id')->on('perfiles_geneticos');
+            $table->foreign('id_usuario_reviso')->references('id')->on('users');
+            $table->foreign('id_estado_perfil_original')->references('id')->on('estados');
 
         });
     }

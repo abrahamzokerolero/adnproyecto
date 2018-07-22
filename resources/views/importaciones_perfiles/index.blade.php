@@ -7,7 +7,7 @@
 <!-- <script En las vistas de tablas no se inluye el script de laravel ya que causa conflicto con el datatable -->
 
 @section('content')
-	
+	<?php $usuario = App\User::find(Illuminate\Support\Facades\Auth::id());?>
 	<div class="card-block">
 		<link rel="stylesheet" href="https://cdn.datatables.net/1.10.16/css/jquery.dataTables.min.css">
 		<div class="container">
@@ -54,11 +54,13 @@
 								</td>
 							
 							<td class="text-center">
-								@can('importaciones_frecuencias.destroy')
-								<a href="{{ route('importaciones_perfiles.destroy', $importacion->id)}}"  onclick="return confirm('Desea eliminar la importacion de perfiles seleccionada, se eliminaran todos los perfiles asociados asi como sus metadatos?' )" class="btn btn-danger btn-sm">
-									<i class="fa fa-times"></i>
-								</a> 
-								@endcan
+								@if($usuario->estado->nombre == 'CNB')
+									@can('importaciones_frecuencias.destroy')
+									<a href="{{ route('importaciones_perfiles.destroy', $importacion->id)}}"  onclick="return confirm('Desea eliminar la importacion de perfiles seleccionada, se eliminaran todos los perfiles asociados asi como sus metadatos?' )" class="btn btn-danger btn-sm">
+										<i class="fa fa-times"></i>
+									</a> 
+									@endcan
+								@endif
 							</td>
 							
 						</tr>

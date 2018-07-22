@@ -30,11 +30,11 @@
 				<tbody>
 					@foreach($busquedas as $busqueda)
 						<tr>
-							<td>{{$busqueda->identificador}}</td>
+							<td><a href="{{route('busquedas.show', $busqueda->id)}}">{{$busqueda->identificador}}</a></td>
 							<td>{{$busqueda->fuente->nombre}}</td>
 							<td>{{$busqueda->motivo}}</td>
 							<td>{{$busqueda->descripcion}}</td>
-							<td>{{$busqueda->usuario->nombre}}</td>
+							<td>{{$busqueda->usuario->name}}</td>
 							<td>{{$busqueda->created_at}}</td>
 						</tr>
 					@endforeach

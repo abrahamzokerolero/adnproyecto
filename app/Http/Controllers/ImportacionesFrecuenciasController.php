@@ -24,10 +24,10 @@ class ImportacionesFrecuenciasController extends Controller
     {
         $usuario = User::find(Auth::id());
         if($usuario->estado->nombre == "CNB"){
-            $importaciones = ImportacionFrecuencia::get();    
+            $importaciones = ImportacionFrecuencia::where('desestimado', '=', 0)->get();    
         }
         else{
-            $importaciones = ImportacionFrecuencia::where('id_estado','=', $usuario->id_estado)->get();   
+            $importaciones = ImportacionFrecuencia::where('id_estado','=', $usuario->id_estado)->where('desestimado', '=', 0)->get();   
         }
         return view('importaciones_frecuencias.index', [
             'importaciones' => $importaciones,
@@ -76,6 +76,7 @@ class ImportacionesFrecuenciasController extends Controller
                 'id_usuario' => Auth::id(),
                 'id_estado' => $usuario->id_estado,
                 'identificador' => 'F-'. $usuario->id_estado . '-' . $consecutivo,
+                'nombre_otorgado' => $request->nombre_otorgado,
             ]);
             
             //Lectura del archivo Excel
@@ -85,44 +86,56 @@ class ImportacionesFrecuenciasController extends Controller
 
                 $id_importacion = ImportacionFrecuencia::all();
                 $id_importacion = $id_importacion->last()->id;
+                $fallo_importacion = false;
 
                 foreach($documento as $columnas){
                     $marcador=$columnas['alelos'];
                     
                     $marcador = Marcador::where('nombre', "=", $marcador)->first();
                     if($marcador == null){
-                        $nombre = $columnas['alelos'];
-                        $marcador = Marcador::create([
-                            'nombre' => $columnas['alelos'],
-                            'id_usuario_registro' => Auth::id(),
-                            'id_usuario_edito' => Auth::id(),
-                        ]);
-                    }
-
-                    $alelo = key($columnas);
-                    foreach($columnas as $key => $fila){
-                        if($fila <> null){
-                            if($marcador <> $fila){
-                                if ($key == 0) {
-                                    $key = '*';
-                                }
-                                // Creacion de cada uno de los registros de excel
-                                
-                                if(floatval($fila) <> 0){
-                                    $frecuencia = Frecuencia::create([
-                                        'id_importacion' => $id_importacion,
-                                        'id_marcador' => $marcador->id,
-                                        'alelo' => $key,
-                                        'frecuencia' => floatval($fila),
-                                    ]);    
-                                }
+                        $frecuencias = Frecuencia::where('id_importacion', '=', $id_importacion)->get();
+                        if($frecuencias->isNotEmpty()){
+                            foreach ($frecuencias as $frecuencia) {
+                                $frecuencia->delete();
                             }
-                        }      
+                        }
+                        $importacion = ImportacionFrecuencia::find($id_importacion);
+                        $importacion->delete();
+                        $fallo_importacion = true;
+                        break;
                     }
+                    else{
+                        $alelo = key($columnas);
+                        foreach($columnas as $key => $fila){
+                            if($fila <> null){
+                                if($marcador <> $fila){
+                                    if ($key == 0) {
+                                        $key = '*';
+                                    }
+                                    // Creacion de cada uno de los registros de excel
+                                    
+                                    if(floatval($fila) <> 0){
+                                        $frecuencia = Frecuencia::create([
+                                            'id_importacion' => $id_importacion,
+                                            'id_marcador' => $marcador->id,
+                                            'alelo' => $key,
+                                            'frecuencia' => floatval($fila),
+                                        ]);    
+                                    }
+                                }
+                            }      
+                        }
+                    }
+                }
+                if($fallo_importacion){
+                    flash('El archivo no pudo ser importado, el marcador <b> '. $columnas['alelos'] . '</b> no existe' , 'danger');
+                }
+                else{
+                    flash('El archivo fue importado correctamente' , 'success');   
                 }
             });
 
-            flash('El archivo fue importado exitosamente exitosamente', 'success');
+            
             return redirect()->route('importaciones_frecuencias.index');
         }
         else{
@@ -140,7 +153,7 @@ class ImportacionesFrecuenciasController extends Controller
     public function show($id)
     {
 
-        $frecuencias = Frecuencia::where('id_importacion', '=', $id)->get();
+        $frecuencias = Frecuencia::where('id_importacion', '=', $id)->where('desestimado', '=', 0)->get();
         return view('importaciones_frecuencias.show',[
             'frecuencias' => $frecuencias,
         ]);
@@ -178,7 +191,14 @@ class ImportacionesFrecuenciasController extends Controller
     public function destroy($id)
     {
         $importacion = ImportacionFrecuencia::find($id);
-        $importacion->delete();
+        
+        foreach ($importacion->frecuencias as $frecuencia) {
+            $frecuencia->desestimado = 1;
+            $frecuencia->save();
+        }
+
+        $importacion->desestimado = 1;
+        $importacion->save();
 
         Flash('Se elimino correctamente la importacion seleccionada', 'success');
         return redirect()->route('importaciones_frecuencias.index');

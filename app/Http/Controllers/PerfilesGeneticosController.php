@@ -11,8 +11,12 @@ use App\User;
 use App\Categoria;
 use App\TipoDeMetadato;
 use App\EtiquetaAsignada;
+use App\Etiqueta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Yajra\DataTables\CollectionDataTable;
+use Illuminate\Support\Facades\DB;
+
 
 class PerfilesGeneticosController extends Controller
 {
@@ -24,18 +28,154 @@ class PerfilesGeneticosController extends Controller
     public function index()
     {
         $usuario = User::find(Auth::id());
+        $tipos_de_metadatos = TipoDeMetadato::get();
+        $categorias = Categoria::with(array('etiquetas' => function($query){$query->where('desestimado', '=', 0);}))->orderBy('nombre', 'ASC')->where('desestimado', '=', 0)->get();
+        $fuentes = Fuente::where('desestimado', '=', 0)->get();
 
         if($usuario->estado->nombre == "CNB"){
-            $perfiles_geneticos = PerfilGenetico::where('requiere_revision', '=', 0)->where('es_perfil_repetido', '=', 0)->where('desestimado', '=', 0)->get();
+            $perfiles_geneticos = DB::table('perfiles_geneticos')
+            ->select('perfiles_geneticos.*','users.name') 
+            ->join('users', 'users.id', '=', 'perfiles_geneticos.id_usuario')
+            ->where('perfiles_geneticos.desestimado', 0)
+            ->where('perfiles_geneticos.es_perfil_repetido', 0)
+            ->where('perfiles_geneticos.requiere_revision', 0)
+            ->get();
         }
         else{
-            $perfiles_geneticos = PerfilGenetico::where('id_estado', '=', $usuario->id_estado)->where('requiere_revision', '=', 0)->where('es_perfil_repetido', '=', 0)->where('desestimado', '=', 0)->get();   
+            $perfiles_geneticos = DB::table('perfiles_geneticos')
+            ->select('perfiles_geneticos.*','users.name') 
+            ->join('users', 'users.id', '=', 'perfiles_geneticos.id_usuario')
+            ->where('perfiles_geneticos.desestimado', 0)
+            ->where('perfiles_geneticos.es_perfil_repetido', 0)
+            ->where('perfiles_geneticos.requiere_revision', 0)
+            ->where('perfiles_geneticos.id_estado', $usuario->id_estado)
+            ->get();  
         }        
         return view('perfiles_geneticos.index', [
-            'perfiles_geneticos' =>$perfiles_geneticos,
+            'perfiles_geneticos' => $perfiles_geneticos->toJson(),
             'usuario' => $usuario,
+            'tipos_de_metadatos' => $tipos_de_metadatos,
+            'categorias' => $categorias,
+            'fuentes' => $fuentes
         ]);
     }
+
+    public function filtro_por_metadato(Request $request){
+
+      if($request->ajax()){
+        
+        $datos = $request->all();
+        $id_tipo_de_metadato;
+        $filtro_por_metadato;
+        foreach ($datos as $key => $value) {
+          if($key == 'id_tipo_de_metadato'){
+            $id_tipo_de_metadato = $value;
+          }
+          if($key == 'filtro_por_metadato'){
+            $filtro_por_metadato = $value;
+          }
+        }
+
+        if($filtro_por_metadato <> null && $id_tipo_de_metadato <> null){
+          $usuario = User::find(Auth::id());
+          if($usuario->estado->nombre == 'CNB'){
+            $perfiles_geneticos_filtrados = DB::table('perfiles_geneticos')
+            ->select('perfiles_geneticos.*','users.name', 'metadatos.id_tipo_de_metadato', 'metadatos.dato') 
+            ->join('users', 'users.id', '=', 'perfiles_geneticos.id_usuario')
+            ->join('metadatos', 'metadatos.id_perfil_genetico', '=', 'perfiles_geneticos.id')
+            ->where('perfiles_geneticos.desestimado', 0)
+            ->where('perfiles_geneticos.es_perfil_repetido', 0)
+            ->where('perfiles_geneticos.requiere_revision', 0)
+            ->where('metadatos.id_tipo_de_metadato', $id_tipo_de_metadato)
+            ->where('metadatos.dato', 'like' ,$filtro_por_metadato.'%')
+            ->get();
+          }
+          else{
+            $perfiles_geneticos_filtrados = DB::table('perfiles_geneticos')
+            ->select('perfiles_geneticos.*','users.name', 'metadatos.id_tipo_de_metadato', 'metadatos.dato') 
+            ->join('users', 'users.id', '=', 'perfiles_geneticos.id_usuario')
+            ->join('metadatos', 'metadatos.id_perfil_genetico', '=', 'perfiles_geneticos.id')
+            ->where('perfiles_geneticos.desestimado', 0)
+            ->where('perfiles_geneticos.es_perfil_repetido', 0)
+            ->where('perfiles_geneticos.requiere_revision', 0)
+            ->where('perfiles_geneticos.id_estado', $usuario->estado->id)
+            ->where('metadatos.id_tipo_de_metadato', $id_tipo_de_metadato)
+            ->where('metadatos.dato', 'like' ,$filtro_por_metadato.'%')
+            ->get();
+          }
+        }  
+        return response()->json([
+          'newData' => $perfiles_geneticos_filtrados,
+        ]); 
+      }
+    }
+
+    public function filtro_por_etiquetas(Request $request){
+
+      if($request->ajax()){
+        $usuario = User::find(Auth::id());
+        // se buscan todos los perfiles geneticos con dichas etiquetas y se agrupan para evitar duplicados
+        $perfiles_geneticos_temporales = DB::raw("(SELECT id_perfil_genetico From etiquetas_asignadas where id_etiqueta in (". implode(',',$request->etiquetas) .") group by id_perfil_genetico) as perfiles_geneticos_temporales");
+
+        // se buscan los perfiles geneticos que cumplan las scondiciones
+
+        if($usuario->estado->nombre == 'CNB'){
+          $perfiles_geneticos = DB::table('perfiles_geneticos')
+          ->select('perfiles_geneticos.*', 'perfiles_geneticos_temporales.id_perfil_genetico', 'users.name')
+          ->join($perfiles_geneticos_temporales, 'perfiles_geneticos_temporales.id_perfil_genetico', '=', 'perfiles_geneticos.id')
+          ->join('users', 'users.id', '=', 'perfiles_geneticos.id_usuario')
+          ->where('perfiles_geneticos.desestimado', 0)
+          ->where('perfiles_geneticos.requiere_revision', 0)
+          ->where('perfiles_geneticos.es_perfil_repetido', 0)
+          ->get();  
+        }
+        else{
+          $perfiles_geneticos = DB::table('perfiles_geneticos')
+          ->select('perfiles_geneticos.*', 'perfiles_geneticos_temporales.id_perfil_genetico', 'users.name')
+          ->join($perfiles_geneticos_temporales, 'perfiles_geneticos_temporales.id_perfil_genetico', '=', 'perfiles_geneticos.id')
+          ->join('users', 'users.id', '=', 'perfiles_geneticos.id_usuario')
+          ->where('perfiles_geneticos.id_estado', '=', $usuario->estado->id)
+          ->where('perfiles_geneticos.desestimado', 0)
+          ->where('perfiles_geneticos.requiere_revision', 0)
+          ->where('perfiles_geneticos.es_perfil_repetido', 0)
+          ->get();
+        } 
+        return response()->json([
+          'newData' => $perfiles_geneticos,
+        ]); 
+      }
+    }
+
+    public function filtro_por_fuentes(Request $request){
+      if($request->ajax()){
+        $usuario = User::find(Auth::id());
+        if($usuario->estado->nombre == 'CNB'){
+          $perfiles_geneticos = DB::table('perfiles_geneticos')
+          ->select('perfiles_geneticos.*', 'users.name')
+          ->join('users', 'users.id', '=', 'perfiles_geneticos.id_usuario')
+          ->where('perfiles_geneticos.desestimado', 0)
+          ->where('perfiles_geneticos.es_perfil_repetido', 0)
+          ->where('perfiles_geneticos.requiere_revision', 0)
+          ->where('id_fuente', '=', $request->id_fuente)
+          ->get();
+        }
+        else{
+          $perfiles_geneticos = DB::table('perfiles_geneticos')
+          ->select('perfiles_geneticos.*', 'users.name')
+          ->join('users', 'users.id', '=', 'perfiles_geneticos.id_usuario')
+          ->where('perfiles_geneticos.id_estado', '=', $usuario->estado->id)
+          ->where('perfiles_geneticos.desestimado', 0)
+          ->where('perfiles_geneticos.es_perfil_repetido', 0)
+          ->where('perfiles_geneticos.requiere_revision', 0)
+          ->where('id_fuente', '=', $request->id_fuente)
+          ->get();
+        } 
+        return response()->json([
+          'newData' => $perfiles_geneticos,
+        ]); 
+      }
+    }
+
 
     /**
      * Show the form for creating a new resource.
@@ -58,6 +198,15 @@ class PerfilesGeneticosController extends Controller
      */
     public function store(Request $request)
     {   
+        function normaliza ($cadena){
+            $originales = 'ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûýýþÿŔŕ';
+            $modificadas = 'aaaaaaaceeeeiiiidnoooooouuuuybsaaaaaaaceeeeiiiidnoooooouuuyybyRr';
+            $cadena = utf8_decode($cadena);
+            $cadena = strtr($cadena, utf8_decode($originales), $modificadas);
+            $cadena = strtolower($cadena);
+            return utf8_encode($cadena);
+        }
+
         $usuario = User::find(Auth::id());
         $consecutivo = PerfilGenetico::where('id_estado', '=', $usuario->estado->id)->count()+1;
         $perfil_genetico = PerfilGenetico::create([
@@ -100,14 +249,14 @@ class PerfilesGeneticosController extends Controller
                                     $metadato = Metadato::create([
                                         'id_perfil_genetico' => $perfil_genetico->id,
                                         'id_tipo_de_metadato' => $tipo_de_metadato->id,
-                                        'dato' => $value
+                                        'dato' => strtoupper(normaliza($value)),
                                     ]);                                    
                                 }   
                                 else{                               // si existe solo creamos el metadato asociado al perfil
                                     $metadato = Metadato::create([
                                         'id_perfil_genetico' => $perfil_genetico->id,
                                         'id_tipo_de_metadato' => $id_tipo_de_metadato->id,
-                                        'dato' => $value
+                                        'dato' => strtoupper(normaliza($value)),
                                     ]);   
                                 }
                             }
@@ -145,7 +294,7 @@ class PerfilesGeneticosController extends Controller
 
         foreach($perfil_genetico->alelos as $alelo){
           
-          if($alelo->alelo_2 == null &&  $alelo->marcador->id_tipo_de_marcador == 1 || $alelo->alelo_2 == null &&  $alelo->marcador->nombre == 'dys385' ){
+          if($alelo->alelo_2 == null &&  $alelo->marcador->id_tipo_de_marcador == 1 && $alelo->marcador->nombre <> 'yindel' || $alelo->alelo_2 == null &&  $alelo->marcador->nombre == 'dys385' ){
             $alelo->alelo_2 = $alelo->alelo_1;
             $alelo->save();
             $homocigotos++;
@@ -174,38 +323,36 @@ class PerfilesGeneticosController extends Controller
           array_push( $datos_perfil, $perfil->id_marcador, $perfil->alelo_1, $perfil->alelo_2); 
         }
 
-        $genotipos = PerfilGenetico::where('desestimado', '=' , 0)->orWhere('es_perfil_repetido', '=' , 0)->get();
+        $datos_perfil = implode($datos_perfil);
+        $perfil_genetico->cadena_unica = $datos_perfil;
+        $perfil_genetico->save();
 
-        foreach($genotipos as $genotipo){
-          $datos_perfil_a_comparar = array();  
-          foreach ($genotipo->alelos as $perfil_acomparar) {
-            array_push($datos_perfil_a_comparar, $perfil_acomparar->id_marcador,$perfil_acomparar->alelo_1, $perfil_acomparar->alelo_2);
-          }
-          
-          if( implode($datos_perfil) == implode($datos_perfil_a_comparar)){
-            if($genotipo->id <> $perfil_genetico->id){
-              $perfil_genetico->es_perfil_repetido = 1;
-              $perfil_genetico->id_perfil_original = $genotipo->id;
-              $perfil_genetico->id_estado_perfil_original = $genotipo->id_estado;
-              $perfil_genetico->save();
-              $usuario = User::find(Auth()->id());  
-              if($usuario->estado->nombre == 'CNB'){
-                  flash("El perfil genetico fue agregado sin embargo existe otro con los mismos marcadores y mismos valores en sus alelos. El perfil fue enviado al apartado de perfiles duplicados: <a href=". route('perfiles_geneticos.validar_duplicado', $perfil_genetico->id) ."> <b>" . $perfil_genetico->identificador . '</b></a>'  , 'danger');
-              }
-              else{
-                if($perfil_genetico->id_estado == $perfil_genetico->id_estado_perfil_original){
-                  flash("El perfil genetico fue agregado sin embargo existe otro con los mismos marcadores y mismos valores en sus alelos. El perfil fue enviado al apartado de perfiles duplicados: <a href=". route('perfiles_geneticos.validar_duplicado', $perfil_genetico->id) ."> <b>" . $perfil_genetico->identificador . '</b></a>'  , 'danger');
-                }
-                else{
-                  flash("El perfil genetico fue agregado sin embargo existe otro perfil en otro estado con los mismos marcadores y mismos valores en sus alelos. CNB se encargara de validar la informacion de ambos perfiles, de ser necesario se comunicara con ustedes para validar la informacion. No ingrese nuevamente el perfil genetico ya fue registrado en la base de datos de CNB"  , 'danger');
-                }
-              }
+        $genotipo_repetido = PerfilGenetico::where('desestimado', '=', 0)->where('cadena_unica', '=', $perfil_genetico->cadena_unica)->orWhere('es_perfil_repetido', '=' , 0)->where('cadena_unica', '=', $perfil_genetico->cadena_unica)->first(); 
+        
+        if($genotipo_repetido <> null){
+          if($genotipo_repetido->id <> $perfil_genetico->id){
+            $perfil_genetico->es_perfil_repetido = 1;
+            $perfil_genetico->id_perfil_original = $genotipo_repetido->id;
+            $perfil_genetico->id_estado_perfil_original = $genotipo_repetido->id_estado;
+            $perfil_genetico->save();
+            $usuario = User::find(Auth()->id());  
+            if($usuario->estado->nombre == 'CNB'){
+                flash("El perfil genetico fue agregado sin embargo existe otro con los mismos marcadores y mismos valores en sus alelos. El perfil fue enviado al apartado de perfiles duplicados: <a href=". route('perfiles_geneticos.validar_duplicado', $perfil_genetico->id) ."> <b>" . $perfil_genetico->identificador . '</b></a>'  , 'danger');
             }
             else{
-              flash('Operacion completada', 'success');
-            }
+              if($perfil_genetico->id_estado == $perfil_genetico->id_estado_perfil_original){
+                flash("El perfil genetico fue agregado sin embargo existe otro con los mismos marcadores y mismos valores en sus alelos. El perfil fue enviado al apartado de perfiles duplicados: <a href=". route('perfiles_geneticos.validar_duplicado', $perfil_genetico->id) ."> <b>" . $perfil_genetico->identificador . '</b></a>'  , 'danger');
+              }
+              else{
+                flash("El perfil genetico fue agregado sin embargo existe otro perfil en otro estado con los mismos marcadores y mismos valores en sus alelos. CNB se encargara de validar la informacion de ambos perfiles, de ser necesario se comunicara con ustedes para validar la informacion. No ingrese nuevamente el perfil genetico ya fue registrado en la base de datos de CNB"  , 'danger');
+              }
+            }  
           }
+          else{
+            flash('Operacion completada', 'success');
+          }  
         }
+        
         return redirect()->route('perfiles_geneticos.index');
     }
 
@@ -326,6 +473,15 @@ class PerfilesGeneticosController extends Controller
      */
     public function update(Request $request, $id)
     {
+        function normaliza ($cadena){
+            $originales = 'ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûýýþÿŔŕ';
+            $modificadas = 'aaaaaaaceeeeiiiidnoooooouuuuybsaaaaaaaceeeeiiiidnoooooouuuyybyRr';
+            $cadena = utf8_decode($cadena);
+            $cadena = strtr($cadena, utf8_decode($originales), $modificadas);
+            $cadena = strtolower($cadena);
+            return utf8_encode($cadena);
+        }
+
         $perfil_genetico = PerfilGenetico::find($id);
 
         $perfil_genetico->id_fuente = $request->id_fuente;
@@ -372,14 +528,14 @@ class PerfilesGeneticosController extends Controller
                                       $metadato = Metadato::create([
                                           'id_perfil_genetico' => $perfil_genetico->id,
                                           'id_tipo_de_metadato' => $tipo_de_metadato->id,
-                                          'dato' => $value
+                                          'dato' => strtoupper(normaliza($value)),
                                       ]);                                    
                                   }   
                                   else{                               // si existe solo creamos el metadato asociado al perfil
                                       $metadato = Metadato::create([
                                           'id_perfil_genetico' => $perfil_genetico->id,
                                           'id_tipo_de_metadato' => $id_tipo_de_metadato->id,
-                                          'dato' => $value
+                                          'dato' => strtoupper(normaliza($value)),
                                       ]);   
                                   }
                               }
@@ -420,7 +576,7 @@ class PerfilesGeneticosController extends Controller
 
         foreach($perfil_genetico->alelos as $alelo){
           
-          if($alelo->alelo_2 == null &&  $alelo->marcador->id_tipo_de_marcador == 1 || $alelo->alelo_2 == null &&  $alelo->marcador->nombre == 'dys385' ){
+          if($alelo->alelo_2 == null &&  $alelo->marcador->id_tipo_de_marcador == 1 && $alelo->marcador->nombre <> 'yindel' || $alelo->alelo_2 == null &&  $alelo->marcador->nombre == 'dys385' ){
             $alelo->alelo_2 = $alelo->alelo_1;
             $alelo->save();
             $homocigotos++;
@@ -449,38 +605,36 @@ class PerfilesGeneticosController extends Controller
           array_push( $datos_perfil, $perfil->id_marcador, $perfil->alelo_1, $perfil->alelo_2); 
         }
 
-        $genotipos = PerfilGenetico::where('desestimado', '=', 0)->where('es_perfil_repetido', '=' , 0)->get();
+        $datos_perfil = implode($datos_perfil);
+        $perfil_genetico->cadena_unica = $datos_perfil;
+        $perfil_genetico->save();
 
-        foreach($genotipos as $genotipo){
-          $datos_perfil_a_comparar = array();  
-          foreach ($genotipo->alelos as $perfil_acomparar) {
-            array_push($datos_perfil_a_comparar, $perfil_acomparar->id_marcador,$perfil_acomparar->alelo_1, $perfil_acomparar->alelo_2);
-          }
-          
-          if( implode($datos_perfil) == implode($datos_perfil_a_comparar)){
-            if($genotipo->id <> $perfil_genetico->id){
-              $perfil_genetico->es_perfil_repetido = 1;
-              $perfil_genetico->id_perfil_original = $genotipo->id;
-              $perfil_genetico->id_estado_perfil_original = $genotipo->id_estado;
-              $perfil_genetico->save();
-              $usuario = User::find(Auth()->id());  
-              if($usuario->estado->nombre == 'CNB'){
-                  flash("El perfil genetico fue agregado sin embargo existe otro con los mismos marcadores y mismos valores en sus alelos. El perfil fue enviado al apartado de perfiles duplicados: <a href=". route('perfiles_geneticos.validar_duplicado', $perfil_genetico->id) ."> <b>" . $perfil_genetico->identificador . '</b></a>'  , 'danger');
-              }
-              else{
-                if($perfil_genetico->id_estado == $perfil_genetico->id_estado_perfil_original){
-                  flash("El perfil genetico fue agregado sin embargo existe otro con los mismos marcadores y mismos valores en sus alelos. El perfil fue enviado al apartado de perfiles duplicados: <a href=". route('perfiles_geneticos.validar_duplicado', $perfil_genetico->id) ."> <b>" . $perfil_genetico->identificador . '</b></a>'  , 'danger');
-                }
-                else{
-                  flash("El perfil genetico fue agregado sin embargo existe otro perfil en otro estado con los mismos marcadores y mismos valores en sus alelos. CNB se encargara de validar la informacion de ambos perfiles, de ser necesario se comunicara con ustedes para validar la informacion"  , 'danger');
-                }
-              }
+        $genotipo_repetido = PerfilGenetico::where('desestimado', '=', 0)->where('cadena_unica', '=', $perfil_genetico->cadena_unica)->orWhere('es_perfil_repetido', '=' , 0)->where('cadena_unica', '=', $perfil_genetico->cadena_unica)->first(); 
+        
+        if($genotipo_repetido <> null){
+          if($genotipo_repetido->id <> $perfil_genetico->id){
+            $perfil_genetico->es_perfil_repetido = 1;
+            $perfil_genetico->id_perfil_original = $genotipo_repetido->id;
+            $perfil_genetico->id_estado_perfil_original = $genotipo_repetido->id_estado;
+            $perfil_genetico->save();
+            $usuario = User::find(Auth()->id());  
+            if($usuario->estado->nombre == 'CNB'){
+                flash("El perfil genetico fue agregado sin embargo existe otro con los mismos marcadores y mismos valores en sus alelos. El perfil fue enviado al apartado de perfiles duplicados: <a href=". route('perfiles_geneticos.validar_duplicado', $perfil_genetico->id) ."> <b>" . $perfil_genetico->identificador . '</b></a>'  , 'danger');
             }
             else{
-              flash('Operacion completada', 'success');
-            }
+              if($perfil_genetico->id_estado == $perfil_genetico->id_estado_perfil_original){
+                flash("El perfil genetico fue agregado sin embargo existe otro con los mismos marcadores y mismos valores en sus alelos. El perfil fue enviado al apartado de perfiles duplicados: <a href=". route('perfiles_geneticos.validar_duplicado', $perfil_genetico->id) ."> <b>" . $perfil_genetico->identificador . '</b></a>'  , 'danger');
+              }
+              else{
+                flash("El perfil genetico fue agregado sin embargo existe otro perfil en otro estado con los mismos marcadores y mismos valores en sus alelos. CNB se encargara de validar la informacion de ambos perfiles, de ser necesario se comunicara con ustedes para validar la informacion. No ingrese nuevamente el perfil genetico ya fue registrado en la base de datos de CNB"  , 'danger');
+              }
+            }  
           }
+          else{
+            flash('Operacion completada', 'success');
+          }  
         }
+        
         return redirect()->route('perfiles_geneticos.index');
     }
 
@@ -498,13 +652,26 @@ class PerfilesGeneticosController extends Controller
     public function revision(){
         $usuario = User::find(Auth::id());
         if($usuario->estado->nombre == "CNB"){
-            $perfiles_geneticos = PerfilGenetico::where('requiere_revision','=',1)->where('es_perfil_repetido','=',0)->where('desestimado', '=', 0)->get();
+            $perfiles_geneticos = DB::table('perfiles_geneticos')
+             ->select('perfiles_geneticos.*','users.name') 
+            ->join('users', 'users.id', '=', 'perfiles_geneticos.id_usuario')
+            ->where('perfiles_geneticos.requiere_revision','=',1)
+            ->where('perfiles_geneticos.es_perfil_repetido','=',0)
+            ->where('perfiles_geneticos.desestimado', '=', 0)
+            ->get();
         }
         else{
-            $perfiles_geneticos = PerfilGenetico::where('id_estado', '=', $usuario->id_estado)->where('requiere_revision','=',1)->where('es_perfil_repetido','=',0)->where('desestimado', '=', 0)->get();   
+            $perfiles_geneticos = DB::table('perfiles_geneticos')
+             ->select('perfiles_geneticos.*','users.name') 
+            ->join('users', 'users.id', '=', 'perfiles_geneticos.id_usuario')
+            ->where('perfiles_geneticos.id_estado','=',$usuario->estado->id)
+            ->where('perfiles_geneticos.requiere_revision','=',1)
+            ->where('perfiles_geneticos.es_perfil_repetido','=',0)
+            ->where('perfiles_geneticos.desestimado', '=', 0)
+            ->get();  
         }  
         return view('perfiles_geneticos.revision', [
-            'perfiles_geneticos' =>$perfiles_geneticos,
+            'perfiles_geneticos' =>$perfiles_geneticos->toJson(),
         ]);
     }
 
@@ -544,10 +711,27 @@ class PerfilesGeneticosController extends Controller
     public function duplicados(){
         $usuario = User::find(Auth::id());
         if($usuario->estado->nombre == "CNB"){
-            $perfiles_geneticos = PerfilGenetico::where('es_perfil_repetido','=',1)->where('desestimado', '=', 0)->get();
+            $perfiles_geneticos = PerfilGenetico::with(array('usuario' => function($query)
+            {$query->select('users.id', 'users.name');}))
+            ->with(array('estado' => function($query){$query->select('estados.id', 'estados.nombre');}))
+            ->with(array('perfil_original' => function($query){$query->select('perfiles_geneticos.id', 'perfiles_geneticos.identificador');}))
+            ->with(array('estado_perfil_original' => function($query){$query->select('estados.id', 'estados.nombre');}))
+            ->where('es_perfil_repetido','=',1)
+            ->where('desestimado', '=', 0)
+            ->get();
         }
         else{
-            $perfiles_geneticos = PerfilGenetico::where('id_estado', '=', $usuario->id_estado)->where('es_perfil_repetido','=',1)->where('id_estado_perfil_original','=',$usuario->id_estado)->where('desestimado', '=', 0)->get();   
+            
+            $perfiles_geneticos = PerfilGenetico::with(array('usuario' => function($query)
+            {$query->select('users.id', 'users.name');}))
+            ->with(array('estado' => function($query){$query->select('estados.id', 'estados.nombre');}))
+            ->with(array('perfil_original' => function($query){$query->select('perfiles_geneticos.id', 'perfiles_geneticos.identificador');}))
+            ->with(array('estado_perfil_original' => function($query){$query->select('estados.id', 'estados.nombre');}))
+            ->where('id_estado', '=', $usuario->id_estado)
+            ->where('id_estado_perfil_original','=',$usuario->id_estado)
+            ->where('es_perfil_repetido','=',1)
+            ->where('desestimado', '=', 0)
+            ->get();   
         }  
         return view('perfiles_geneticos.duplicados', [
             'perfiles_geneticos' =>$perfiles_geneticos,
@@ -557,13 +741,50 @@ class PerfilesGeneticosController extends Controller
     public function desestimados(){
         $usuario = User::find(Auth::id());
         if($usuario->estado->nombre == "CNB"){
-            $perfiles_geneticos = PerfilGenetico::where('desestimado', '=', 1)->get();
+            $perfiles_geneticos = PerfilGenetico::with(array('usuario_reviso' => function($query)
+            {$query->select('users.id', 'users.name');}))
+            ->where('desestimado', '=', 1)
+            ->get();
         }
         else{
             $perfiles_geneticos = PerfilGenetico::where('id_estado', '=', $usuario->id_estado)->where('desestimado', '=', 1)->get();   
         }  
+
         return view('perfiles_geneticos.desestimados', [
             'perfiles_geneticos' =>$perfiles_geneticos,
+        ]);
+    }
+
+    public function estadisticas($etiqueta){
+
+        $usuario = User::find(Auth::id());
+        $etiqueta_objetivo = Etiqueta::where('nombre', '=', $etiqueta)->first();
+        if($usuario->estado->nombre == "CNB"){
+            $perfiles_geneticos = DB::table('perfiles_geneticos')
+            ->select('perfiles_geneticos.*', 'etiquetas_asignadas.id_perfil_genetico', 'etiquetas_asignadas.id_etiqueta', 'users.name')
+            ->join('etiquetas_asignadas', 'etiquetas_asignadas.id_perfil_genetico', '=', 'perfiles_geneticos.id')
+            ->join('users', 'users.id', '=', 'perfiles_geneticos.id_usuario')
+            ->where('perfiles_geneticos.desestimado', '=', 0)
+            ->where('perfiles_geneticos.es_perfil_repetido', '=', 0)
+            ->where('etiquetas_asignadas.id_etiqueta', '=', $etiqueta_objetivo->id)
+            ->get();
+        }
+        else{
+            
+            $perfiles_geneticos = DB::table('perfiles_geneticos')
+            ->select('perfiles_geneticos.*', 'etiquetas_asignadas.id_perfil_genetico', 'etiquetas_asignadas.id_etiqueta')
+            ->join('etiquetas_asignadas', 'etiquetas_asignadas.id_perfil_genetico', '=', 'perfiles_geneticos.id')
+            ->where('perfiles_geneticos.desestimado', '=', 0)
+            ->where('perfiles_geneticos.es_perfil_repetido', '=', 0)
+            ->where('etiquetas_asignadas.id_etiqueta', '=', $etiqueta_objetivo->id)
+            ->where('id_estado', '=', $usuario->id_estado)
+            ->get();   
+        }  
+
+
+        return view('perfiles_geneticos.estadisticas', [
+            'perfiles_geneticos' =>$perfiles_geneticos,
+            'etiqueta' => $etiqueta_objetivo,
         ]);
     }
 

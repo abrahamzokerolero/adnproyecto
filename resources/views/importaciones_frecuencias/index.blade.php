@@ -7,7 +7,6 @@
 <!-- <script En las vistas de tablas no se inluye el script de laravel ya que causa conflicto con el datatable -->
 
 @section('content')
-	
 	<div class="card-block">
 		<div class="card-title p-3 mb-3card-header">
 			<img src="{{asset('images/importar.png')}}" alt="" width="80" height="70" class=""><span class="h4 ml-3 font-weight-bold"> LISTA DE IMPORTACIONES DE FRECUENCIAS </span>
@@ -61,13 +60,16 @@
 										Si desea hacer la carga de su archivo al sistema debera seleccionar el boton examinar donde podra elegir su archivo desde su directorio personal. Para concluir la operacion debera hacer click en el boton "Importar". Los formatos soportados por el sistema son xls y xlsx correspondientes a la plataforma de excel. No se aceptan otros formatos.
 									</p>
 									<div>
-											<div class="form-group">
-												{!! Form::file('archivo', ['required', 'files' => 'true'])!!}
-												{!! Form::submit('Importar', ['class' => 'btn btn-primary ml-3']) !!}
-											</div>
-											<div class="form-group">
-												
-											</div>
+										<div class="form-group">
+											{!!Form::label('nombre_otorgado', 'Agregar nombre a la tabla de frecuencias')!!}
+											{!!Form::text('nombre_otorgado', null, ['class' => 'form-control', 'required'] )!!}
+
+											{!! Form::file('archivo', ['required', 'files' => 'true', 'class' => 'mt-3'])!!}
+											{!! Form::submit('Importar', ['class' => 'btn btn-primary ml-3']) !!}
+										</div>
+										<div class="form-group">
+											
+										</div>
 									</div>
 									{!! Form::close() !!} 
 								</div>
@@ -82,6 +84,7 @@
 			<table id="myTable" class="table">
 				<thead class="card-header bg-warning">
 					<td>ID Importacion</td>
+					<td>Nombre</td>
 					<td>Archivo</td>
 					<td>Usuario</td>
 					<td>Fecha de importacion</td>
@@ -93,6 +96,7 @@
 					@foreach($importaciones as $importacion)
 						<tr>
 							<td><a href="{{ route('importaciones_frecuencias.show', $importacion->id)}}">{{$importacion->identificador}}</a></td>
+							<td>{{$importacion->nombre_otorgado}}</td>
 							<td>{{$importacion->nombre}}</td>
 							<td>{{$importacion->usuario->name}}</td>
 							<td>{{$importacion->created_at}}</td>
@@ -101,11 +105,11 @@
 								<a href="{{'storage/'. $importacion->nombre}}" class="btn btn-info btn-sm text-center"><i class="fa fa-download"></i></a>
 							</td>
 							<td class="text-right">
-								@can('importaciones_frecuencias.destroy')
-								<a href="{{ route('importaciones_frecuencias.destroy', $importacion->id)}}"  onclick="return confirm('Desea eliminar la importacion de frecuencias seleccionada?' )" class="btn btn-danger btn-sm">
-									<i class="fa fa-times"></i>
-								</a> 
-								@endcan
+									@can('importaciones_frecuencias.destroy')
+									<a href="{{ route('importaciones_frecuencias.destroy', $importacion->id)}}"  onclick="return confirm('Desea eliminar la importacion de frecuencias seleccionada?' )" class="btn btn-danger btn-sm">
+										<i class="fa fa-times"></i>
+									</a> 
+									@endcan
 							</td>
 							
 						</tr>

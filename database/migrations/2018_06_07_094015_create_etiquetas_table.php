@@ -17,9 +17,11 @@ class CreateEtiquetasTable extends Migration
             $table->increments('id');
             $table->string('nombre')->unique();
             $table->integer('categoria_id')->unsigned()->nullable();
-            $table->timestamps();
+            $table->boolean('desestimado')->default(false);
+            $table->date('created_at')->default(date("Y-m-d H:i:s"));
+            $table->date('updated_at')->default(date("Y-m-d H:i:s"));
 
-            $table->foreign('categoria_id')->references('id')->on('categorias')->onDelete('set null');
+            $table->foreign('categoria_id')->references('id')->on('categorias');
         });
     }
 

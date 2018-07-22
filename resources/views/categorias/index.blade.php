@@ -7,7 +7,7 @@
 <!-- <script En las vistas de tablas no se inluye el script de laravel ya que causa conflicto con el datatable -->
 
 @section('content')
-
+	<?php $usuario = App\User::find(Illuminate\Support\Facades\Auth::id());?>
 	@if(count($errors) > 0)
 		<div class="alert alert-danger" role="alert">
 			<ul>
@@ -26,6 +26,7 @@
 		<link rel="stylesheet" href="https://cdn.datatables.net/1.10.16/css/jquery.dataTables.min.css">
 
 		<!--Botones colapsables-->
+		@if($usuario->estado->nombre == 'CNB')
 		<div class="d-flex flex-row justify-content-between p-3">
 			@can('categorias.store')
 			<div class="p-2">
@@ -42,6 +43,7 @@
 			</div>
 			@endcan
 		</div>
+		@endif
 		
 		<!--formulario para cateorias colapsable-->
 
@@ -107,13 +109,15 @@
 						<tr>
 							<td>{{$categoria->id}}</td>
 							<td><a href="/categorias/{{$categoria->id}}">{{$categoria->nombre}}</a></td>
-							<td class="text-center"><span class="btn btn-outline-success btn-sm disabled">{{App\Etiqueta::where('categoria_id', '=', $categoria->id)->count()}}</span></td>
+							<td class="text-center"><span class="btn btn-outline-success btn-sm disabled">{{App\Etiqueta::where('categoria_id', '=', $categoria->id)->where('desestimado', '=', 0)->count()}}</span></td>
 							<td class="text-right">
-								@can('categorias.destroy')
-								<a href="{{ route('categorias.destroy', $categoria->id)}}"  onclick="return confirm('Desea eliminar la categoria seleccionada?' )" class="btn btn-danger btn-sm">
-									<i class="fa fa-times"></i>
-								</a>
-								@endcan
+								@if($usuario->estado->nombre == 'CNB')
+									@can('categorias.destroy')
+									<a href="{{ route('categorias.destroy', $categoria->id)}}"  onclick="return confirm('Desea eliminar la categoria seleccionada?' )" class="btn btn-danger btn-sm">
+										<i class="fa fa-times"></i>
+									</a>
+									@endcan
+								@endif
 								@can('categorias.edit') 
 								<a href="{{ route('categorias.edit', $categoria->id)}}" class="btn btn-warning btn-sm" >
 									<i class="fa fa-pencil-square-o"></i>

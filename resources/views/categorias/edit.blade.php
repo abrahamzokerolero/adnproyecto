@@ -34,7 +34,7 @@
 
 	<!-- Formulario de ingreso de una nueva categoria-->
 
-	<div class="container w-75">
+	<div class="container w-100">
 		<p class="card-header bg-secondary text-white">Actualizacion de datos</p>
 	
 		{!! Form::open(array('route' => ['categorias.update',$categoria->id], 'method' => 'PUT')) !!}﻿

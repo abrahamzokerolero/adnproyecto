@@ -46,7 +46,7 @@
 						
 									<td>{{$marcador->nombre}}</td>
 									<td>{!!Form::text($alelo_1, null, ['class' => "text-center w-100 $alelo_1"])!!}</td>
-									@if($marcador->id_tipo_de_marcador == 2 &&  $marcador->nombre <> 'dys385' || $marcador->id_tipo_de_marcador == 3)
+									@if($marcador->id_tipo_de_marcador == 2 &&  $marcador->nombre <> 'dys385' || $marcador->id_tipo_de_marcador == 3 || $marcador->nombre == 'yindel')
 										<td>{!!Form::text($alelo_2, null, ['class' => "text-center w-100 $alelo_2", 'disabled'])!!}</td>
 									@else
 										<td>{!!Form::text($alelo_2, null, ['class' => "text-center w-100 $alelo_2"])!!}</td>

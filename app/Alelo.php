@@ -9,8 +9,8 @@ use App\Marcador;
 class Alelo extends Model
 {
     protected $table = 'alelos';
-
-    protected $guarded = [];
+    //protected $dateFormat = 'M j Y h:i:s';
+	protected $guarded = [];
 
     public function perfil_genetico(){
     	return $this->belongsTo(PerfilGenetico::class, 'id_perfil_genetico');

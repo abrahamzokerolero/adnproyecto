@@ -44,10 +44,10 @@ class FrecuenciasController extends Controller
         ]);
 
         $frecuencia = Frecuencia::find($id);
-        $frecuencia->marcador = $request->marcador;
+        $frecuencia->marcador->nombre = $request->marcador;
         $frecuencia->alelo = $request->alelo;
         $frecuencia->frecuencia = $request->frecuencia;
-        $frecuencia->updated_at = Carbon::now();
+        $frecuencia->updated_at = date("Y-m-d H:i:s");
         $frecuencia->save();
         flash('El marcador fue actualizado correctamente', 'success');
         return redirect()->route('importaciones_frecuencias.show', $frecuencia->importacion_frecuencia->id);
@@ -62,7 +62,8 @@ class FrecuenciasController extends Controller
     public function destroy($id)
     {
         $frecuencia = Frecuencia::find($id);
-        $frecuencia->delete();
+        $frecuencia->desestimado = 1;
+        $frecuencia->save();
         flash('El marcador fue eliminado correctamente', 'success');
         return redirect()->route('importaciones_frecuencias.show', $frecuencia->importacion_frecuencia->id);
     }

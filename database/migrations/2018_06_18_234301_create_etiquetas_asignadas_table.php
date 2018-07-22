@@ -18,9 +18,10 @@ class CreateEtiquetasAsignadasTable extends Migration
             $table->integer('id_etiqueta')->unsigned();
             $table->integer('id_perfil_genetico')->unsigned();
 
-            $table->timestamps();
-            $table->foreign('id_etiqueta')->references('id')->on('etiquetas')->onDelete('cascade');
-            $table->foreign('id_perfil_genetico')->references('id')->on('perfiles_geneticos')->onDelete('cascade');
+            $table->date('created_at')->default(date("Y-m-d H:i:s"));
+            $table->date('updated_at')->default(date("Y-m-d H:i:s"));
+            $table->foreign('id_etiqueta')->references('id')->on('etiquetas');
+            $table->foreign('id_perfil_genetico')->references('id')->on('perfiles_geneticos');
         });
     }
 

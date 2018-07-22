@@ -16,7 +16,7 @@ class FuentesController extends Controller
      */
     public function index()
     {
-        $fuentes = Fuente::get();
+        $fuentes = Fuente::where('desestimado', '=', 0)->get();
         return view('fuentes.index', [
             'fuentes' => $fuentes,
         ]);
@@ -62,8 +62,8 @@ class FuentesController extends Controller
             'correo_fuente' => $request->input('correo_fuente'),
             'telefono1_fuente' => $request->input('telefono1_fuente'),
             'telefono2_fuente' => $request->input('telefono2_fuente'),
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
+            'created_at' => date("Y-m-d H:i:s"),
+            'updated_at' => date("Y-m-d H:i:s"),
         ]);
 
         flash('La fuente se ingreso correctamente', 'success');
@@ -125,7 +125,7 @@ class FuentesController extends Controller
         $fuente->correo_fuente = $request->correo_fuente;
         $fuente->telefono1_fuente = $request->telefono1_fuente;
         $fuente->telefono2_fuente = $request->telefono2_fuente;
-        $fuente->updated_at = Carbon::now();
+        $fuente->updated_at = date("Y-m-d H:i:s");
         $fuente->save();
 
         Flash('La fuente fue actualizada', 'success');
@@ -142,7 +142,8 @@ class FuentesController extends Controller
     public function destroy($id)
     {
         $fuente = Fuente::find($id);
-        $fuente->delete();
+        $fuente->desestimado = 1;
+        $fuente->save();
 
         Flash('La fuente ' .$fuente->nombre . ' fue eliminada exitosamente', 'success');
 

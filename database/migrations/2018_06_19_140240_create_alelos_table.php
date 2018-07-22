@@ -22,10 +22,11 @@ class CreateAlelosTable extends Migration
             $table->string('alelo_3')->nullable();
             $table->string('alelo_4')->nullable();
             $table->string('alelo_5')->nullable();
-            $table->timestamps();
+            $table->date('created_at')->default(date("Y-m-d H:i:s"));
+            $table->date('updated_at')->default(date("Y-m-d H:i:s"));
 
-            $table->foreign('id_perfil_genetico')->references('id')->on('perfiles_geneticos')->onDelete('cascade');
-            $table->foreign('id_marcador')->references('id')->on('marcadores')->onDelete('cascade');
+            $table->foreign('id_perfil_genetico')->references('id')->on('perfiles_geneticos');
+            $table->foreign('id_marcador')->references('id')->on('marcadores');
         });
     }
 

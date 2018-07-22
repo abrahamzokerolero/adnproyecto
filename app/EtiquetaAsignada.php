@@ -9,7 +9,7 @@ use App\Etiqueta;
 class EtiquetaAsignada extends Model
 {
     protected $table = 'etiquetas_asignadas';
-
+    //protected $dateFormat = 'M j Y h:i:s';
     protected $guarded = [];
 
     public function perfil_genetico(){

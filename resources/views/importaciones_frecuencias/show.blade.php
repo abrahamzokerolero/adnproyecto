@@ -34,12 +34,12 @@
 							<td>{{$frecuencia->frecuencia}}</td>
 							<td class="float-right">
 								@can('frecuencias.destroy')
-								<a href="{{ route('frecuencias.destroy', $frecuencia->id)}}"  onclick="return confirm('Desea eliminar el marcador seleccionado?' )" class="btn btn-danger">
+								<a href="{{ route('frecuencias.destroy', $frecuencia->id)}}"  onclick="return confirm('Desea eliminar el marcador seleccionado?' )" class="btn btn-danger btn-sm">
 									<i class="fa fa-times"></i>
 								</a> 
 								@endcan
 								@can('frecuencias.edit')
-								<a href="{{ route('frecuencias.edit', $frecuencia->id)}}" class="btn btn-warning" >
+								<a href="{{ route('frecuencias.edit', $frecuencia->id)}}" class="btn btn-warning btn-sm" >
 									<i class="fa fa-pencil-square-o"></i>
 								</a>
 								@endcan

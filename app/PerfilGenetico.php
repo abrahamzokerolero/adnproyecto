@@ -15,7 +15,7 @@ use App\PerfilGenetico;
 class PerfilGenetico extends Model
 {
     protected $table = 'perfiles_geneticos';
-
+    //protected $dateFormat = 'M j Y h:i:s';
     protected $guarded = [];
 
     public function importacion_perfil(){

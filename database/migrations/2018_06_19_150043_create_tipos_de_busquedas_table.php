@@ -16,7 +16,8 @@ class CreateTiposDeBusquedasTable extends Migration
         Schema::create('tipos_de_busquedas', function (Blueprint $table) {
             $table->increments('id');
             $table->string('nombre');
-            $table->timestamps();
+            $table->date('created_at')->default(date("Y-m-d H:i:s"));
+            $table->date('updated_at')->default(date("Y-m-d H:i:s"));
         });
     }
 

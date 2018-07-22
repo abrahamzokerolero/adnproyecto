@@ -17,7 +17,7 @@ class MarcadoresController extends Controller
      */
     public function index()
     {
-        $marcadores = Marcador::get(); 
+        $marcadores = Marcador::where('desestimado', '=', 0)->get(); 
         return view( 'marcadores.index' ,[
             'marcadores' => $marcadores,
         ]);
@@ -106,7 +106,7 @@ class MarcadoresController extends Controller
         $marcador = Marcador::find($id);
         $marcador->nombre = $request->nombre;
         $marcador->id_usuario_edito = Auth::id();
-        $marcador->updated_at = Carbon::now();
+        $marcador->updated_at = date("Y-m-d H:i:s");
         $marcador->save();
         Flash('La marcador cambio de nombre a: <b>' . $marcador->nombre . '</b>', 'success');
         return redirect()->route('marcadores.index');
@@ -121,7 +121,8 @@ class MarcadoresController extends Controller
     public function destroy($id)
     {
         $marcador = Marcador::find($id);
-        $marcador->delete();
+        $marcador->desestimado = 1;
+        $marcador->save();
 
         Flash('El marcador ' .$marcador->nombre . ' fue eliminado exitosamente', 'success');
 

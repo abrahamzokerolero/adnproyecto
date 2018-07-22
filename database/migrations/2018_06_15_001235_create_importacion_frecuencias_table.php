@@ -17,12 +17,15 @@ class CreateImportacionFrecuenciasTable extends Migration
             $table->increments('id');
             $table->string('identificador');
             $table->string('nombre');
-            $table->integer('id_usuario')->unsigned()->nullable();
-            $table->integer('id_estado')->unsigned()->nullable();
-            $table->timestamps();
+            $table->string('nombre_otorgado');
+            $table->integer('id_usuario')->unsigned();
+            $table->integer('id_estado')->unsigned();
+            $table->boolean('desestimado')->default(false);
+            $table->date('created_at')->default(date("Y-m-d H:i:s"));
+            $table->date('updated_at')->default(date("Y-m-d H:i:s"));
 
-            $table->foreign('id_usuario')->references('id')->on('users')->onDelete('set null');
-            $table->foreign('id_estado')->references('id')->on('estados')->onDelete('set null');
+            $table->foreign('id_usuario')->references('id')->on('users');
+            $table->foreign('id_estado')->references('id')->on('estados');
         });
     }
 

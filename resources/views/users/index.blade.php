@@ -29,12 +29,12 @@
 							<td>{{$usuario->created_at}}</td>
 							<td>
 								@can('users.destroy')
-								<a href="{{ route('users.destroy', $usuario->id)}}"  onclick="return confirm('Desea eliminar el usuario seleccionado?' )" class="btn btn-danger">
+								<a href="{{ route('users.destroy', $usuario->id)}}"  onclick="return confirm('Desea eliminar el usuario seleccionado?' )" class="btn btn-danger btn-sm">
 									<i class="fa fa-times"></i>
 								</a> 
 								@endcan
 								@can('users.edit')
-								<a href="{{ route('users.edit', $usuario->id)}}" class="btn btn-warning" >
+								<a href="{{ route('users.edit', $usuario->id)}}" class="btn btn-warning btn-sm" >
 									<i class="fa fa-pencil-square-o"></i>
 								</a>
 								@endcan

@@ -19,10 +19,12 @@ class CreateFrecuenciasTable extends Migration
             $table->integer('id_marcador')->unsigned();
             $table->string('alelo');
             $table->double('frecuencia', 6, 4);
-            $table->timestamps();
+            $table->boolean('desestimado')->default(false);
+            $table->date('created_at')->default(date("Y-m-d H:i:s"));
+            $table->date('updated_at')->default(date("Y-m-d H:i:s"));
 
-            $table->foreign('id_importacion')->references('id')->on('importacion_frecuencias')->onDelete('cascade');
-            $table->foreign('id_marcador')->references('id')->on('marcadores')->onDelete('cascade');
+            $table->foreign('id_importacion')->references('id')->on('importacion_frecuencias');
+            $table->foreign('id_marcador')->references('id')->on('marcadores');
         });
     }
 

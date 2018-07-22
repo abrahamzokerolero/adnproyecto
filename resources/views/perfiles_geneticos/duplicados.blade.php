@@ -25,30 +25,49 @@
 					<td class="text-center">Fecha de creacion</td>
 				</thead>
 				<tbody>
-					@foreach($perfiles_geneticos as $perfil_genetico)
-						<tr>
-							<td>
-								<a href="{{ route('perfiles_geneticos.validar_duplicado', $perfil_genetico)}}">{{$perfil_genetico->identificador}}</a>
-							</td>
-							<td>{{$perfil_genetico->estado->nombre}}</td>
-							<td class="text-center">{{$perfil_genetico->perfil_original->identificador}}</td>
-							<td class="text-center">{{$perfil_genetico->estado_perfil_original->nombre}}</td>
-							<td class="text-center">{{$perfil_genetico->usuario->name}}</td>
-							<td class="text-center">{{$perfil_genetico->created_at}}</td>
-						</tr>
-					@endforeach
+					
 				</tbody>
 			</table>
 			<script src="https://code.jquery.com/jquery-3.3.1.js"></script>
 			<script src="https://cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>
 			<script>
 				$(document).ready(function() {
-				  $('#myTable').DataTable({
-				  	"order": [ 0 , 'desc'],
-				    "language": {
-				      "url": "http://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"
-				    }
-				  });
+				  $(function() {
+					  var data = <?php echo $perfiles_geneticos;?>;
+					  console.log(data);
+					  var oTable = $('#myTable').DataTable({
+				            data:data,
+					        columnDefs: [{"className": "dt-center", "targets": "_all"}],
+				            columns: [
+						        { data: 'identificador',
+							    	render: function ( data, type, row ) {
+								        return '<a class="border border-danger rounded p-1" href="../perfiles/'+ row.id +'/validar_duplicado">'+ data + '</a>';
+								    }
+							    },
+						        { data: 'estado' ,
+						        	render: function ( data, type, row ) {
+								        return data.nombre;
+								    }
+						    	},
+						        { data: 'perfil_original',
+						        	render: function ( data, type, row ) {
+								        return '<span class=" border border-success rounded p-1">'+ data.identificador + '</span>';
+								    }
+						        },
+						        { data: 'estado_perfil_original',
+						        	render: function ( data, type, row ) {
+								        return data.nombre ;
+								    }
+								},
+						        { data: 'usuario' ,
+						        	render: function ( data, type, row ) {
+								        return data.name ;
+								    }
+						        },
+						        { data: 'created_at'},
+						    ]
+				        });
+					});
 				});
 			</script>
 		</div>

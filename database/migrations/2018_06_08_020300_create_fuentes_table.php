@@ -22,7 +22,9 @@ class CreateFuentesTable extends Migration
             $table->string('correo_fuente')->nullable();
             $table->string('telefono1_fuente')->nullable();
             $table->string('telefono2_fuente')->nullable();
-            $table->timestamps();
+            $table->boolean('desestimado')->default(false);
+            $table->date('created_at')->default(date("Y-m-d H:i:s"));
+            $table->date('updated_at')->default(date("Y-m-d H:i:s"));
         });
     }
 

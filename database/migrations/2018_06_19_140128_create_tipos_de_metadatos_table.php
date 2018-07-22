@@ -16,7 +16,8 @@ class CreateTiposDeMetadatosTable extends Migration
         Schema::create('tipos_de_metadatos', function (Blueprint $table) {
             $table->increments('id');
             $table->string('nombre')->unique();
-            $table->timestamps();
+            $table->date('created_at')->default(date("Y-m-d H:i:s"));
+            $table->date('updated_at')->default(date("Y-m-d H:i:s"));
         });
     }
 

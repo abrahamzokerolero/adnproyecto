@@ -26,29 +26,43 @@
 					<td class="text-center">Fecha de creacion</td>
 				</thead>
 				<tbody>
-					@foreach($perfiles_geneticos as $perfil_genetico)
-						<tr>
-							<td>{{$perfil_genetico->identificador}}</td>
-							<td>{{$perfil_genetico->id_externo}}</td>
-							<td class="text-center"><a href="#" class="btn btn-outline-danger btn-sm disabled">{{$perfil_genetico->numero_de_marcadores}}</a></td>
-							<td class="text-center"><span class="btn btn-light btn-sm disabled">{{$perfil_genetico->numero_de_homocigotos}}</span></td>
-							<td class="text-center">{{$perfil_genetico->usuario->name}}</td>
-							<td class="text-center"><a href="{{ route('perfiles_geneticos.show', $perfil_genetico->id)}}" class="btn btn-primary btn-sm">revisar</a></td>
-							<td class="text-center">{{$perfil_genetico->created_at}}</td>
-						</tr>
-					@endforeach
+					
 				</tbody>
 			</table>
 			<script src="https://code.jquery.com/jquery-3.3.1.js"></script>
 			<script src="https://cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>
 			<script>
 				$(document).ready(function() {
-				  $('#myTable').DataTable({
-				  	"order": [ 0 , 'desc'],
-				    "language": {
-				      "url": "http://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"
-				    }
-				  });
+				  var data = <?php echo $perfiles_geneticos;?>;
+				  var oTable = $('#myTable').DataTable({
+			            data:data,
+				        columnDefs: [{"className": "dt-center", "targets": "_all"}],
+			            columns: [
+					        { data: 'identificador',
+						    render: function ( data, type, row ) {
+							        return '<a href="../perfiles_geneticos/'+ row.id +'">'+ data + '</a>';
+							    }
+						    },
+					        { data: 'id_externo' },
+					        { data: 'numero_de_marcadores',
+					        render: function ( data, type, row ) {
+							        return '<span class=" border border-success rounded p-1">'+ data + '</span>';
+							    }
+					        },
+					        { data: 'numero_de_homocigotos', 
+					        render: function ( data, type, row ) {
+							        return '<span class=" border border-info rounded p-1">'+ data + '</span>';
+							    }
+					        },
+					        { data: 'name' },
+					        { data: 'requiere_revision', render: function ( data, type, row ) {
+					        		if(data == 1){data = 'si';}
+							        return '<span class="btn btn-danger btn-sm rounded p-1 disabled">'+ data + '</span>';
+							    }
+							},
+					        { data: 'created_at'},
+					    ]
+			        });
 				});
 			</script>
 		</div>

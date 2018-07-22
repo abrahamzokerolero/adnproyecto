@@ -22,11 +22,12 @@ class CreateBusquedasResultadosTable extends Migration
             $table->double('PP', 11, 8);
             $table->integer('marcadores_minimos');
             $table->integer('exclusiones');
-            $table->timestamps();
+            $table->date('created_at')->default(date("Y-m-d H:i:s"));
+            $table->date('updated_at')->default(date("Y-m-d H:i:s"));
 
-            $table->foreign('id_busqueda')->references('id')->on('busquedas')->onDelete('set null');
-            $table->foreign('id_perfil_objetivo')->references('id')->on('perfiles_geneticos')->onDelete('set null');
-            $table->foreign('id_perfil_subordinado')->references('id')->on('perfiles_geneticos')->onDelete('set null');
+            $table->foreign('id_busqueda')->references('id')->on('busquedas');
+            $table->foreign('id_perfil_objetivo')->references('id')->on('perfiles_geneticos');
+            $table->foreign('id_perfil_subordinado')->references('id')->on('perfiles_geneticos');
         });
     }
 

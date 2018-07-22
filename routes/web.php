@@ -6,7 +6,8 @@
 |--------------------------------------------------------------------------
 */
 Auth::routes();
-Route::get('/', "PagesController@home");
+Route::get('/', "PagesController@home")->name('home');
+Route::get('/estadisticas', "PagesController@estadisticas")->name('estadisticas');
 
 
 /*
@@ -92,7 +93,12 @@ Route::middleware(['auth'])->group(function(){
 	Route::post('importaciones_perfiles/store', 'ImportacionesPerfilesController@store')->name('importaciones_perfiles.store')->middleware('permission:importaciones_perfiles.create');
 	Route::get('importaciones_perfiles/{importacion_perfil}/edit','ImportacionesPerfilesController@edit')->name('importaciones_perfiles.edit')->middleware('permission:importaciones_perfiles.edit');
 	Route::get('importaciones_perfiles/{importacion_perfil}', 'ImportacionesPerfilesController@show')->name('importaciones_perfiles.show')->middleware('permission:importaciones_perfiles.show');
-	Route::get('importaciones_perfiles/{importacion_perfil}/destroy', 'ImportacionesPerfilesController@destroy')->name('importaciones_perfiles.destroy')->middleware('permission:importaciones_perfiles.destroy');	
+	Route::get('importaciones_perfiles/{importacion_perfil}/destroy', 'ImportacionesPerfilesController@destroy')->name('importaciones_perfiles.destroy')->middleware('permission:importaciones_perfiles.destroy');
+
+	// Rutas Ajax	
+
+	Route::post('importaciones_perfiles/crear_categoria', 'ImportacionesPerfilesController@crear_categoria')->name('importaciones_perfiles.crear_categoria');
+	Route::post('importaciones_perfiles/crear_etiquetas', 'ImportacionesPerfilesController@crear_etiquetas')->name('importaciones_perfiles.crear_etiquetas');
 
 	
 	/* Rutas de Perfiles Geneticos*/
@@ -104,16 +110,28 @@ Route::middleware(['auth'])->group(function(){
 	Route::get('perfiles_geneticos/{importacion_perfil}', 'PerfilesGeneticosController@show')->name('perfiles_geneticos.show')->middleware('permission:perfiles_geneticos.show');
 	Route::get('perfiles_geneticos/{importacion_perfil}/destroy', 'PerfilesGeneticosController@destroy')->name('perfiles_geneticos.destroy')->middleware('permission:perfiles_geneticos.destroy');
 	
+	// En revision
 	Route::get('perfiles/revision', 'PerfilesGeneticosController@revision')->name('perfiles_geneticos.revision');
 	Route::put('perfiles/{perfil_genetico}/validar', 'PerfilesGeneticosController@validar')->name('perfiles_geneticos.validar');
 
 	Route::post('perfiles/comprobacion', 'PerfilesGeneticosController@comprobacion')->name('perfiles_geneticos.comprobacion');
 
+	// Duplicados
 	Route::get('perfiles/duplicados', 'PerfilesGeneticosController@duplicados')->name('perfiles_geneticos.duplicados');
 	Route::get('perfiles/{perfil_genetico}/validar_duplicado', 'PerfilesGeneticosController@validar_duplicado')->name('perfiles_geneticos.validar_duplicado');
 	Route::put('perfiles/{perfil_genetico}/guardar_validacion_de_duplicado', 'PerfilesGeneticosController@guardar_validacion_de_duplicado')->name('perfiles_geneticos.guardar_validacion_de_duplicado');
-
+	
+	// Desestimados
 	Route::get('perfiles/desestimados', 'PerfilesGeneticosController@desestimados')->name('perfiles_geneticos.desestimados');
+
+	// Desde estadisticas
+	Route::get('perfiles/{etiqueta}/estadisticas', 'PerfilesGeneticosController@estadisticas')->name('perfiles_geneticos.estadisticas');
+
+	// Rutas para ajax
+	Route::post('perfiles/filtro_por_metadato', 'PerfilesGeneticosController@filtro_por_metadato')->name('perfiles_geneticos.filtro_por_metadato');
+	Route::post('perfiles/filtro_por_etiquetas', 'PerfilesGeneticosController@filtro_por_etiquetas')->name('perfiles_geneticos.filtro_por_etiquetas');
+	Route::post('perfiles/filtro_por_fuentes', 'PerfilesGeneticosController@filtro_por_fuentes')->name('perfiles_geneticos.filtro_por_fuentes');
+
 
 	/* Rutas de Busquedas*/
 	Route::get('busquedas', 'BusquedasController@index')->name('busquedas.index')->middleware('permission:busquedas.index');
@@ -123,5 +141,6 @@ Route::middleware(['auth'])->group(function(){
 	Route::get('busquedas/{importacion_perfil}', 'BusquedasController@show')->name('busquedas.show')->middleware('permission:busquedas.show');
 	Route::get('busquedas/{importacion_perfil}/destroy', 'BusquedasController@destroy')->name('busquedas.destroy')->middleware('permission:busquedas.destroy');
 	Route::get('ventana/busquedas', 'BusquedasController@ventana')->name('busquedas.ventana');
+	Route::post('busquedas_resultados/{busqueda}/concluir', 'BusquedasController@concluir')->name('busquedas.concluir');
 
 });

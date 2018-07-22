@@ -25,11 +25,13 @@ class CreateImportacionesPerfilesTable extends Migration
             $table->string('observaciones')->nullable();
             $table->string('titulo')->nullable();
             $table->integer('id_estado')->unsigned()->nullable();
-            $table->timestamps();
+            $table->boolean('desestimado')->default(false);
+            $table->date('created_at')->default(date("Y-m-d H:i:s"));
+            $table->date('updated_at')->default(date("Y-m-d H:i:s"));
 
-            $table->foreign('id_fuente')->references('id')->on('fuentes')->onDelete('set null');
-            $table->foreign('id_usuario')->references('id')->on('users')->onDelete('set null');
-            $table->foreign('id_estado')->references('id')->on('estados')->onDelete('set null');
+            $table->foreign('id_fuente')->references('id')->on('fuentes');
+            $table->foreign('id_usuario')->references('id')->on('users');
+            $table->foreign('id_estado')->references('id')->on('estados');
         });
     }
 

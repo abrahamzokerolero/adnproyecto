@@ -18,7 +18,7 @@ class CategoriasController extends Controller
      */
     public function index()
     {   
-        $categorias = DB::table('categorias')->get();
+        $categorias = DB::table('categorias')->where('desestimado', '=' , 0)->get();
         return view('categorias.index', [
             'categorias' => $categorias
         ]);
@@ -43,8 +43,8 @@ class CategoriasController extends Controller
 
         $categoria = Categoria::create([
             'nombre' => $request->input('nombre'),
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
+            'created_at' => date("Y-m-d H:i:s"),
+            'updated_at' => date("Y-m-d H:i:s"),
         ]);
 
         flash('La categoria se ingreso correctamente', 'success');
@@ -61,7 +61,7 @@ class CategoriasController extends Controller
     public function show($id)
     {
         $categoria = Categoria::find($id);
-        $etiquetas = Etiqueta::where('categoria_id', '=', $id)->get();
+        $etiquetas = Etiqueta::where('categoria_id', '=', $id)->where('desestimado', '=', 0)->get();
 
         return view('categorias.show', [
             'categoria' => $categoria,
@@ -100,7 +100,7 @@ class CategoriasController extends Controller
 
         $categoria = Categoria::find($id);
         $categoria->nombre = $request->nombre;
-        $categoria->updated_at = Carbon::now();
+        $categoria->updated_at = date("Y-m-d H:i:s");
         $categoria->save();
         Flash('La categoria cambio de nombre a: <b>' . $categoria->nombre . '</b>', 'success');
         return redirect()->route('categorias.index');
@@ -115,7 +115,21 @@ class CategoriasController extends Controller
     public function destroy($id)
     {
         $categoria = Categoria::find($id);
-        $categoria->delete();
+
+        foreach ($categoria->etiquetas as $etiqueta) {
+
+            $perfiles_etiquetados = EtiquetaAsignada::where('id_etiqueta', '=', $etiqueta->id)->get();
+
+            foreach ($perfiles_etiquetados as $perfil_etiquetado) {
+                $perfil_etiquetado->delete();
+            }
+
+            $etiqueta->categoria_id = null;
+            $etiqueta->save();
+        }
+
+        $categoria->desestimado = 1;
+        $categoria->save();
 
         Flash('La categoria ' .$categoria->nombre . ' fue eliminada exitosamente sin embargo debera asignar sus etiquetas manualmente', 'success');
 

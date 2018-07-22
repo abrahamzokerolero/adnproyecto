@@ -11,6 +11,10 @@ use App\Busqueda;
 use App\Categoria;
 use App\Fuente;
 use App\ImportacionFrecuencia;
+use App\Marcador;
+use App\EstatusBusqueda;
+use Illuminate\Support\Facades\DB;
+
 
 class BusquedasController extends Controller
 {
@@ -21,7 +25,7 @@ class BusquedasController extends Controller
      */
     public function index()
     {   
-        $busquedas = Busqueda::get();
+        $busquedas = Busqueda::where('id_estatus_busqueda', '<>', 3)->get();
         return view('busquedas.index', [
             'busquedas' => $busquedas,
         ]);
@@ -35,7 +39,7 @@ class BusquedasController extends Controller
     public function create()
     {
         $fuentes = Fuente::get();
-        $categorias = Categoria::get();
+        $categorias = Categoria::with(array('etiquetas' => function($query){$query->where('desestimado', '=', 0);}))->orderBy('nombre', 'ASC')->where('desestimado', '=', 0)->get();
         $tablas_de_frecuencias = ImportacionFrecuencia::get();
         return view('busquedas.create',[
             'categorias' => $categorias,
@@ -54,6 +58,18 @@ class BusquedasController extends Controller
     // Busqueda individual
     public function store(Request $request)
     {   
+        $request->etiquetas;
+        $formato_array_sql = '';
+
+        foreach ($request->etiquetas as $etiqueta) {
+            $formato_array_sql += '<Id IdEtiqueta = \"$etiqueta\" /> ';
+
+        }
+
+        //$prueba = DB::select("EXEC PruebaArreglo '<ROOT> <Id IdEtiqueta = \"1229\" /><Id IdEtiqueta = \"1230\" /><Id IdEtiqueta = \"1231\" /></ROOT>'");
+        dd($formato_array_sql);
+
+
         $marcadores_minimos_en_la_busqueda = $request->marcadores_minimos;
         $numero_de_exclusiones = $request->exclusiones;
         $descartar_perfiles_en_revision = $request->descartar_perfiles_en_revision;
@@ -147,7 +163,9 @@ class BusquedasController extends Controller
             flash('El perfil objetivo seleccionado no existe', 'danger');
             return redirect()->route('busquedas.index');
         }
+
     }
+
     public function store2(Request $request)
     {
         dd($request);
@@ -161,7 +179,25 @@ class BusquedasController extends Controller
      */
     public function show($id)
     {
-        //
+        $busqueda = Busqueda::with('resultados')->find($id); 
+        $marcadores = Marcador::get();
+        $estatus_disponibles = EstatusBusqueda::where('id', '<>', 1 )->get();
+
+        return view('busquedas.show',[
+            'busqueda' => $busqueda,
+            'marcadores' => $marcadores,
+            'estatus_disponibles' => $estatus_disponibles,
+        ]);
+    }
+
+    public function concluir(Request $request,$id)
+    {   
+        $busqueda = Busqueda::find($id);
+        $busqueda->conclusiones = $request->conclusiones;
+        $busqueda->id_estatus_busqueda = $request->id_estatus_busqueda;
+        $busqueda->save();
+
+        return redirect()->route('busquedas.index');
     }
 
     /**
